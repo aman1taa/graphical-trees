@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Б-дерево порядка m по шагам</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="trees.html">← Все деревья</a>
+  <span class="crumb">Б-дерево порядка m</span>
+  <button class="theme" id="themeBtn" type="button" title="Сменить тему">☾</button>
+</header>
+<main>
+  <h1>Б-дерево порядка m по шагам</h1>
+  <p class="lead">Б-дерево — многопутевое дерево страниц. При порядке <b>m</b> на каждой странице (кроме корня) от <b>m</b> до <b>2m</b> элементов, у корня — от 1 до 2m. Новый элемент вставляется в лист; если на странице стало больше 2m элементов, она расщепляется: <i>m левых</i> остаются, <i>средний</i> уходит в родителя, <i>m правых</i> переезжают на новую страницу. Так же, как в учебном алгоритме построения Б-дерева.</p>
+
+  <section class="card">
+    <div class="row">
+      <div class="field">
+        <label for="inp">Буквы в порядке вставки</label>
+        <input id="inp" value="ABHJKEOMFC" autocomplete="off" spellcheck="false" placeholder="Например: ABHJKEOMFC">
+      </div>
+      <div class="field" style="flex:0 1 160px">
+        <label for="order">Порядок m</label>
+        <select id="order">
+          <option value="1">1 — до 2 элементов</option>
+          <option value="2" selected>2 — до 4 элементов</option>
+          <option value="3">3 — до 6 элементов</option>
+          <option value="4">4 — до 8 элементов</option>
+        </select>
+      </div>
+      <button class="p" id="go" type="button">Построить</button>
+      <button id="ex" type="button">Пример</button>
+    </div>
+    <div class="meta" id="props" style="margin-top:9px"></div>
+  </section>
+
+  <div id="stage"></div>
+
+  <details>
+    <summary>Алгоритм построения Б-дерева порядка m</summary>
+    <ol>
+      <li>Выполняется поиск элемента <b>D</b> (добавляемых данных).</li>
+      <li>Если <b>D</b> в дереве нет, запоминаем страницу по адресу <b>a</b> и позицию <b>P</b>, в которой ожидали найти элемент.</li>
+      <li>Вставляем элемент в позицию <b>P+1</b>, число элементов <b>k</b> на странице увеличивается на 1.</li>
+      <li>Если <b>k ≤ 2m</b>, процесс закончен: на странице было место.</li>
+      <li>Если <b>k &gt; 2m</b>, происходит <b>переполнение страницы</b>. Создаём новую страницу <b>b</b>, на неё переносим <i>m правых элементов</i>, <i>средний элемент</i> переносим на родительскую страницу, <i>m левых элементов</i> оставляем на странице <b>a</b>.</li>
+      <li>Включение элемента в родительскую страницу производится по тому же алгоритму.</li>
+      <li>Если родительской страницы нет, она создаётся (корневая) с единственным элементом.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Чем Б-дерево отличается от двоичного Б-дерева (ДБД)</summary>
+    <ul>
+      <li><b>Б-дерево</b> хранит на странице сразу от m до 2m ключей и имеет до 2m+1 потомков у страницы — каждая страница это узел с массивом ключей.</li>
+      <li><b>ДБД</b> — двоичное представление Б-дерева: у каждой вершины только два указателя, а одна страница из 1–2 (в симметричном варианте — до 3) ключей собирается из нескольких вершин, связанных «горизонтальными» ссылками.</li>
+      <li>Идея одна: все листья на одном уровне, переполнение страницы лечится расщеплением. Различается способ хранения и размер страницы.</li>
+    </ul>
+  </details>
+
+  <nav class="pager">
+    <a href="btree.html">← Двоичное Б-дерево</a>
+    <a href="optimal-exact.html">Оптимальное дерево — точный алгоритм →</a>
+  </nav>
+</main>
+<script src="assets/core.js"></script>
+<script>
+(function(){
+  'use strict';
+  const S = window.TreeSite;
+  const $ = S.$;
+  let root = null, seq = 0, steps = [], M = 2;
+  const mk = (keys, ch) => ({id:++seq, keys:keys || [], ch:ch || []});
+
+  const player = S.mountPlayer($('stage'), {
+    legend: '<span><i class="dot" style="background:var(--ac)"></i>узел на пути / изменённый узел</span><span><i class="dot" style="background:var(--ok)"></i>вставленный или поднятый ключ</span>',
+    render(canvas, step){
+      canvas.innerHTML = '<div class="tree-host"></div>';
+      S.renderBTree(canvas.querySelector('.tree-host'), step);
+    }
+  });
+
+  function snap(title, text, extra){
+    steps.push(Object.assign({title, text, tree:S.cloneB(root)}, extra || {}));
+  }
+  const fmtNode = n => '[' + n.keys.map(S.esc).join(' ') + ']';
+
+  function findIndex(n, key){
+    let i = 0;
+    while(i < n.keys.length && key > n.keys[i]) i++;
+    return i;
+  }
+  function contains(n, key){
+    while(n){
+      const i = findIndex(n, key);
+      if(n.keys[i] === key) return true;
+      if(!n.ch.length) return false;
+      n = n.ch[i];
+    }
+    return false;
+  }
+  function insert(key){
+    if(contains(root, key)){
+      snap(`«${key}» уже есть`,
+        `Поиск нашёл «<b>${S.esc(key)}</b>» в дереве — элемент уже есть, добавлять нечего.`,
+        {});
+      return;
+    }
+    if(!root){
+      root = mk([key], []);
+      snap(`Вставка «${key}»`,
+        `Дерево пустое: создаём корень ${fmtNode(root)}.`,
+        {hiNode:root.id, hiKey:key});
+      return;
+    }
+
+    let t = root, trace = [], path = [], walkText = [];
+    while(true){
+      path.push(t.id);
+      const i = findIndex(t, key);
+      const keys = fmtNode(t);
+      if(!t.ch.length){
+        walkText.push(`${keys}: элемент «${S.esc(key)}» — страница-лист, позиция P = ${i}.`);
+        break;
+      }
+      walkText.push(`${keys}: ключ «${S.esc(key)}» ${i < t.keys.length ? '&lt; «' + S.esc(t.keys[i]) + '» → потомок ' + i : '&gt; всех ключей → потомок ' + i}.`);
+      trace.push({n:t, i});
+      t = t.ch[i];
+    }
+    snap(`Вставка «${key}»: поиск`,
+      walkText.join('<br>') + '<span class="l">Элемента в дереве нет — запоминаем страницу a (последняя на пути) и позицию P, где его ожидали найти.</span>',
+      {nodes:path});
+
+    const pos = findIndex(t, key);
+    t.keys.splice(pos, 0, key);
+    const overfull = t.keys.length > 2 * M;
+    snap(`Ключ «${key}» добавлен на страницу`,
+      `Элемент вставлен в позицию P+1 = ${pos + 1}: страница ${fmtNode(t)}, k = <b>${t.keys.length}</b>.<span class="l">${overfull ? `k = ${t.keys.length} &gt; 2m = ${2 * M} — переполнение страницы, нужно расщепление.` : `k = ${t.keys.length} ≤ 2m = ${2 * M} — на странице было место, процесс закончен.`}</span>`,
+      {hiNode:t.id, hiKey:key});
+
+    let node = t;
+    while(node.keys.length > 2 * M){
+      const mid = M;
+      const promoted = node.keys[mid];
+      const left = mk(node.keys.slice(0, mid), node.ch.slice(0, mid + 1));
+      const right = mk(node.keys.slice(mid + 1), node.ch.slice(mid + 1));
+      const parentInfo = trace.pop();
+      if(!parentInfo){
+        root = mk([promoted], [left, right]);
+        snap(`Расщепление корня: средний «${promoted}»`,
+          `Корневая страница переполнена. Средний элемент «<b>${S.esc(promoted)}</b>» уходит наверх, а родительской страницы нет — создаём корневую с единственным элементом. Слева ${M} элементов ${fmtNode(left)}, справа новая страница ${fmtNode(right)}.<span class="l">Высота дерева увеличилась на 1 — Б-дерево растёт только через корень.</span>`,
+          {nodes:[root.id], hiNode:root.id, hiKey:promoted});
+        break;
+      }
+      const parent = parentInfo.n;
+      parent.keys.splice(parentInfo.i, 0, promoted);
+      parent.ch.splice(parentInfo.i, 1, left, right);
+      snap(`Расщепление: средний «${promoted}» поднят`,
+        `Переполнение страницы: ${M} левых элементов остаются на странице ${fmtNode(left)}, ${M} правых переносим на новую страницу ${fmtNode(right)}, средний «<b>${S.esc(promoted)}</b>» включаем в родителя ${fmtNode(parent)}.<span class="l">${parent.keys.length > 2 * M ? `У родителя k = ${parent.keys.length} &gt; 2m = ${2 * M} — тот же алгоритм повторяется на уровень выше.` : `У родителя k = ${parent.keys.length} ≤ 2m — вставка завершена.`}</span>`,
+        {nodes:[parent.id], hiNode:parent.id, hiKey:promoted});
+      node = parent;
+    }
+  }
+
+  function levelInfo(){
+    let maxDepth = 0, leaves = 0, leafDepth = null, same = true;
+    (function walk(n, d){
+      maxDepth = Math.max(maxDepth, d);
+      if(!n.ch.length){
+        leaves++;
+        if(leafDepth === null) leafDepth = d;
+        else if(leafDepth !== d) same = false;
+      }
+      n.ch.forEach(c => walk(c, d + 1));
+    })(root, 0);
+    return {height:maxDepth + 1, leaves, same};
+  }
+
+  function build(){
+    M = +$('order').value;
+    const parsed = S.parseKeys($('inp').value, 20);
+    const keys = parsed.keys;
+    seq = 0; root = null; steps = [];
+    $('props').innerHTML = `Порядок <b>m=${M}</b>: на странице от <b>${M}</b> до <b>${2 * M}</b> элементов (в корне от 1 до ${2 * M}), у страницы до <b>${2 * M + 1}</b> потомков. Переполнение — при k &gt; ${2 * M}.`;
+    if(!keys.length){
+      player.setSteps([{title:'Пусто', text:'Введите хотя бы одну букву.', tree:null}]);
+      return;
+    }
+    snap('Пустое B-дерево',
+      `Вставляем ключи в порядке <b>${keys.map(S.esc).join(' → ')}</b> при порядке m=${M}.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Для каждого элемента выполняется поиск; если его нет, он вставляется в лист, а при k &gt; 2m страница расщепляется и средний элемент уходит в родителя.</span>`,
+      {});
+    for(const k of keys) insert(k);
+    const info = levelInfo();
+    snap('Готово: B-дерево построено',
+      `Элементов: <b>${keys.length}</b>, высота <b>${info.height}</b>, листьев <b>${info.leaves}</b>.<span class="l">${info.same ? 'Все листья на одном уровне — B-дерево сбалансировано по построению.' : 'Листья оказались на разных уровнях — проверьте порядок и входные данные.'}</span>`,
+      {});
+    player.setSteps(steps);
+  }
+
+  $('go').onclick = build;
+  $('order').onchange = build;
+  $('ex').onclick = () => { $('inp').value = 'ABHJKEOMFC'; build(); };
+  $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  build();
+})();
+</script>
+</body>
+</html>
