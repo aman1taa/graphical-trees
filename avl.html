@@ -5,6 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>АВЛ-дерево по шагам</title>
 <link rel="stylesheet" href="assets/style.css">
+<style>
+/* «Карман» с кодом: выезжает справа, поверх страницы, ничего не сдвигает */
+.pocket{
+  --kw:#8a3fc0;--ty:#0e7490;--cm:#7a8494;--nm:#b45309;
+  position:fixed;top:0;right:0;bottom:0;z-index:60;
+  width:min(600px,94vw);
+  display:flex;flex-direction:column;
+  background:var(--bg);color:var(--tx);
+  border-left:1px solid var(--bd);box-shadow:-12px 0 36px rgba(0,0,0,.18);
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0;
+  will-change:transform;
+}
+.pocket.open{transform:none}
+:root[data-theme="dark"] .pocket,:root[data-theme="amoled"] .pocket{--kw:#c79bff;--ty:#5fd3e6;--cm:#8a93a5;--nm:#f0b45a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pocket{--kw:#c79bff;--ty:#5fd3e6;--cm:#8a93a5;--nm:#f0b45a}}
+:root .pocket button.pocket-tab{
+  position:absolute;left:-42px;top:min(38%,320px);
+  width:42px;padding:16px 0;border:1px solid var(--ac);border-right:0;
+  border-radius:12px 0 0 12px;background:var(--ac);color:#fff;
+  font:600 14px/1 ui-monospace,SFMono-Regular,Consolas,monospace;
+  writing-mode:vertical-rl;transform:none;
+  cursor:pointer;box-shadow:-4px 4px 14px rgba(0,0,0,.18);
+}
+:root .pocket button.pocket-tab:hover{filter:brightness(1.08)}
+.pocket-head{display:flex;align-items:flex-start;gap:10px;padding:14px 16px 10px;border-bottom:1px solid var(--bd)}
+.pocket-head h2{margin:0;font-size:16px}
+.pocket-head p{margin:3px 0 0;font-size:12.5px;color:var(--mut);line-height:1.45}
+.pocket-x{margin-left:auto;flex:none;padding:4px 10px;position:static}
+.pocket-scroll{flex:1;overflow:auto;padding:10px 0 18px;overscroll-behavior:contain}
+.code{margin:0;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;min-width:max-content}
+.code .ln{display:block;padding:0 16px 0 0;border-left:3px solid transparent}
+.code .no{display:inline-block;width:38px;padding-right:12px;text-align:right;color:var(--mut);opacity:.6;user-select:none}
+.code .ln.on{background:var(--acsoft);border-left-color:var(--ac)}
+.code .ln.on .no{opacity:1;color:var(--ac)}
+.code .ln.on.fresh{animation:lnin .35s ease backwards;animation-delay:calc(var(--i) * 110ms)}
+@keyframes lnin{from{background:transparent;border-left-color:transparent}}
+.code .k{color:var(--kw)}.code .t{color:var(--ty)}.code .c{color:var(--cm);font-style:italic}.code .n{color:var(--nm)}
+.pocket-foot{padding:9px 16px;border-top:1px solid var(--bd);font-size:12.5px;color:var(--mut);line-height:1.5}
+.pocket-foot b{color:var(--tx)}
+@media (prefers-reduced-motion:reduce){.pocket{transition:none}.code .ln.on.fresh{animation:none}}
+</style>
 </head>
 <body>
 <header class="topbar">
@@ -45,6 +87,20 @@
     <a href="avl-delete.html">Удаление из АВЛ-дерева →</a>
   </nav>
 </main>
+<aside class="pocket" id="pocket" aria-label="Код алгоритма">
+  <button class="pocket-tab" id="pocketTab" type="button" aria-expanded="false" aria-controls="pocketBody" title="Показать код">{ } код на C</button>
+  <div id="pocketBody" style="display:flex;flex-direction:column;min-height:0;height:100%">
+    <div class="pocket-head">
+      <div>
+        <h2>Вставка в АВЛ-дерево на C</h2>
+        <p>Функция <code>add_avl</code>; повороты LL, LR, RR, RL вписаны прямо в неё для наглядности. Подсвечены строки текущего шага.</p>
+      </div>
+      <button class="pocket-x" id="pocketX" type="button" aria-label="Закрыть код">✕</button>
+    </div>
+    <div class="pocket-scroll" id="codeScroll"><pre class="code" id="code"></pre></div>
+    <div class="pocket-foot"><b>p, q, r</b> — это P, Q, R на схеме. <b>bal</b> = h(правого) − h(левого); <b>rost</b> = 1, пока поддерево выросло в высоту.</div>
+  </div>
+</aside>
 <script src="assets/core.js"></script>
 <script>
 (function(){
@@ -54,6 +110,147 @@
   let root = null, seq = 0, steps = [], rotations = 0;
   const mk = d => ({id:++seq, d, b:0, l:null, r:null});
 
+  /* ---------- Карман с кодом ---------- */
+  const CODE = [
+    ['struct vertex {', ''],
+    ['    int data;', ''],
+    ['    int bal;                       /* h(right) - h(left) */', ''],
+    ['    struct vertex *left, *right;', ''],
+    ['};', ''],
+    ['', ''],
+    ['int rost = 0;', 'sig'],
+    ['', ''],
+    ['struct vertex* add_avl(int data, struct vertex *p) {', 'sig'],
+    ['    struct vertex *q, *r;', 'sig'],
+    ['    if (!p) {', 'null'],
+    ['        p = malloc(sizeof(struct vertex));', 'new'],
+    ['        p->data = data;', 'new'],
+    ['        p->left = NULL;', 'new'],
+    ['        p->right = NULL;', 'new'],
+    ['        p->bal = 0;', 'new'],
+    ['        rost = 1;', 'new'],
+    ['    }', ''],
+    ['', ''],
+    ['    else if (p->data > data) {', 'cmpL'],
+    ['        p->left = add_avl(data, p->left);', 'recL'],
+    ['        if (rost == 1) {', 'chkL'],
+    ['            if (p->bal > 0) {p->bal = 0; rost = 0;}', 'Lc1'],
+    ['            else if (p->bal == 0) {p->bal = -1; rost = 1;}', 'Lc0'],
+    ['            else if (p->left->bal < 0) {          /* LL */', 'Lcm1 Lif'],
+    ['                rost = 0;', 'LL'],
+    ['                q = p->left;', 'LL'],
+    ['                p->bal = 0;', 'LL'],
+    ['                q->bal = 0;', 'LL'],
+    ['                p->left = q->right;', 'LL'],
+    ['                q->right = p;', 'LL'],
+    ['                p = q;', 'LL'],
+    ['            }', ''],
+    ['            else {                                /* LR */', 'Lelse LR'],
+    ['                rost = 0;', 'LR'],
+    ['                q = p->left;', 'LR'],
+    ['                r = q->right;', 'LR'],
+    ['                if (r->bal < 0) p->bal = 1;', 'LR'],
+    ['                else p->bal = 0;', 'LR'],
+    ['                if (r->bal > 0) q->bal = -1;', 'LR'],
+    ['                else q->bal = 0;', 'LR'],
+    ['                r->bal = 0;', 'LR'],
+    ['                q->right = r->left;', 'LR'],
+    ['                p->left = r->right;', 'LR'],
+    ['                r->left = q;', 'LR'],
+    ['                r->right = p;', 'LR'],
+    ['                p = r;', 'LR'],
+    ['            }', ''],
+    ['        }', ''],
+    ['    }', ''],
+    ['', ''],
+    ['    else if (p->data < data) {', 'cmpR'],
+    ['        p->right = add_avl(data, p->right);', 'recR'],
+    ['        if (rost == 1) {', 'chkR'],
+    ['            if (p->bal < 0) {p->bal = 0; rost = 0;}', 'Rcm1'],
+    ['            else if (p->bal == 0) {p->bal = 1; rost = 1;}', 'Rc0'],
+    ['            else if (p->right->bal > 0) {         /* RR */', 'Rc1 Rif'],
+    ['                rost = 0;', 'RR'],
+    ['                q = p->right;', 'RR'],
+    ['                p->bal = 0;', 'RR'],
+    ['                q->bal = 0;', 'RR'],
+    ['                p->right = q->left;', 'RR'],
+    ['                q->left = p;', 'RR'],
+    ['                p = q;', 'RR'],
+    ['            }', ''],
+    ['            else {                                /* RL */', 'Relse RL'],
+    ['                rost = 0;', 'RL'],
+    ['                q = p->right;', 'RL'],
+    ['                r = q->left;', 'RL'],
+    ['                if (r->bal > 0) p->bal = -1;', 'RL'],
+    ['                else p->bal = 0;', 'RL'],
+    ['                if (r->bal < 0) q->bal = 1;', 'RL'],
+    ['                else q->bal = 0;', 'RL'],
+    ['                r->bal = 0;', 'RL'],
+    ['                p->right = r->left;', 'RL'],
+    ['                q->left = r->right;', 'RL'],
+    ['                r->left = p;', 'RL'],
+    ['                r->right = q;', 'RL'],
+    ['                p = r;', 'RL'],
+    ['            }', ''],
+    ['        }', ''],
+    ['    }', ''],
+    ['    return p;', 'ret'],
+    ['}', '']
+  ];
+  const codePane = (function(){
+    const pre = $('code'), scroll = $('codeScroll'), pocket = $('pocket'), tab = $('pocketTab');
+    const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const re = /(\/\*.*?\*\/)|\b(void|int|if|else|struct|return|sizeof)\b|\b(vertex|malloc|NULL)\b|(-?\b\d+\b)/g;
+    function paint(src){
+      let out = '', last = 0, m;
+      re.lastIndex = 0;
+      while((m = re.exec(src))){
+        out += esc(src.slice(last, m.index));
+        const cls = m[1] ? 'c' : m[2] ? 'k' : m[3] ? 't' : 'n';
+        out += `<span class="${cls}">${esc(m[0])}</span>`;
+        last = m.index + m[0].length;
+      }
+      return out + esc(src.slice(last));
+    }
+    pre.innerHTML = CODE.map((l, i) =>
+      `<span class="ln" data-t=" ${l[1]} "><span class="no">${i + 1}</span>${paint(l[0])}\n</span>`).join('');
+    const lines = Array.from(pre.children);
+
+    function show(tags){
+      const set = new Set(tags || []);
+      let k = 0, first = null;
+      lines.forEach(el => {
+        const on = el.dataset.t.trim().split(' ').some(t => t && set.has(t));
+        el.classList.remove('on', 'fresh');
+        if(on){ el.style.setProperty('--i', k++); if(!first) first = el; }
+      });
+      void pre.offsetWidth;   /* перезапуск анимации подсветки */
+      lines.forEach(el => {
+        if(el.dataset.t.trim().split(' ').some(t => t && set.has(t))) el.classList.add('on', 'fresh');
+      });
+      if(first && pocket.classList.contains('open')){
+        /* показываем всю подсвеченную область; если не влезает — последние строки (то, что выполняется сейчас) */
+        const on = lines.filter(el => el.classList.contains('on'));
+        const top = on[0].offsetTop, last = on[on.length - 1];
+        const bottom = last.offsetTop + last.offsetHeight, h = scroll.clientHeight;
+        let target = (top + bottom) / 2 - h / 2;
+        if(bottom - top > h - 60) target = bottom - h + 80;
+        scroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
+      }
+    }
+    function setOpen(v){
+      pocket.classList.toggle('open', v);
+      tab.setAttribute('aria-expanded', String(v));
+      tab.title = v ? 'Скрыть код' : 'Показать код';
+      try{ localStorage.setItem('avlCodeOpen', v ? '1' : '0'); }catch(e){}
+    }
+    tab.onclick = () => setOpen(!pocket.classList.contains('open'));
+    $('pocketX').onclick = () => setOpen(false);
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') setOpen(false); });
+    try{ if(localStorage.getItem('avlCodeOpen') === '1') setOpen(true); }catch(e){}
+    return {show};
+  })();
+
   const player = S.mountPlayer($('stage'), {
     legend: '<span><i class="dot" style="background:var(--ok)"></i>новый узел</span><span><i class="dot" style="background:var(--bad)"></i>нарушен баланс</span><span><i class="dot" style="background:var(--ac)"></i>участвует в повороте (P, Q, R)</span>',
     render(canvas, step){
@@ -62,6 +259,7 @@
       S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:true});
     },
     onStep(step){
+      codePane.show(step.code);
       ['LL', 'RR', 'LR', 'RL'].forEach(k => {
         const el = $('c-' + k);
         if(el) el.classList.toggle('on', step.rot === k);
@@ -83,14 +281,14 @@
     }
     snap('Пустое дерево',
       `Вставляем ключи по одному: <b>${chars.map(S.esc).join(' → ')}</b>.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">После каждой вставки идём от листа вверх и обновляем балансы, пока не дойдём до корня или не встретим нарушение.</span>`,
-      {});
+      {code:['sig']});
 
     for(const ch of chars){
       if(!root){
         root = mk(ch);
         snap(`Вставка «${ch}»`,
           `Дерево пустое — «${S.esc(ch)}» становится корнем, баланс 0.`,
-          {newId:root.id});
+          {newId:root.id, code:['null', 'new']});
         continue;
       }
 
@@ -104,10 +302,12 @@
         if(!next) break;
         t = next;
       }
+      const pathTags = new Set();
+      path.forEach(st => { pathTags.add(st.dir < 0 ? 'cmpL' : 'cmpR'); pathTags.add(st.dir < 0 ? 'recL' : 'recR'); });
       if(duplicate){
         snap(`«${ch}» уже есть`,
           `Ключ «${S.esc(ch)}» найден по пути вставки — дубликаты не добавляем, балансы не меняются.`,
-          {});
+          {code:[...pathTags, 'ret']});
         continue;
       }
 
@@ -116,17 +316,21 @@
       if(dir < 0) t.l = node; else t.r = node;
 
       const log = [];
+      const fired = new Set(pathTags);
       let rot = null;
       for(let i = path.length - 1; i >= 0; i--){
         const p = path[i].n, goLeft = path[i].dir < 0;
         const old = p.b, P = S.esc(p.d);
+        fired.add(goLeft ? 'chkL' : 'chkR'); fired.add(goLeft ? 'swL' : 'swR');
         if(goLeft){
           if(p.b > 0){
+            fired.add('Lc1');
             p.b = 0;
             log.push(`${P}: bal ${S.fmtBal(old)} → 0 — высота поддерева не изменилась, стоп.`);
             break;
           }
           if(p.b === 0){
+            fired.add('Lc0');
             p.b = -1;
             log.push(`${P}: bal 0 → −1 — поддерево выросло, идём выше.`);
             if(i === 0) log.push('Дошли до корня: высота всего дерева выросла.');
@@ -134,11 +338,13 @@
           }
         } else {
           if(p.b < 0){
+            fired.add('Rcm1');
             p.b = 0;
             log.push(`${P}: bal ${S.fmtBal(old)} → 0 — высота поддерева не изменилась, стоп.`);
             break;
           }
           if(p.b === 0){
+            fired.add('Rc0');
             p.b = 1;
             log.push(`${P}: bal 0 → +1 — поддерево выросло, идём выше.`);
             if(i === 0) log.push('Дошли до корня: высота всего дерева выросла.');
@@ -146,6 +352,7 @@
           }
         }
         rot = {i, p, dir:path[i].dir};
+        fired.add(path[i].dir < 0 ? 'Lcm1' : 'Rc1');
         p.b = path[i].dir * 2;
         log.push(`<b>${P}: bal ${S.fmtBal(old)} → ${S.fmtBal(p.b)} — нарушение АВЛ-условия!</b>`);
         break;
@@ -157,7 +364,7 @@
       if(!rot){
         snap(`Вставка «${ch}»`,
           `${head}<br>Новый лист добавлен. Пересчёт балансов вверх по пути:${logHTML}<span class="l">Нарушений нет — поворот не нужен.</span>`,
-          {newId:node.id});
+          {newId:node.id, code:[...fired, 'null', 'new']});
         continue;
       }
 
@@ -179,7 +386,8 @@
 
       snap(`Вставка «${ch}»: баланс нарушен в «${P}»`,
         `${head}<br>Пересчёт балансов:${logHTML}<br>${why} Узел P=«${P}» — первый неуравновешенный снизу.`,
-        {newId:node.id, bad:p.id, tags, rot:kind});
+        {newId:node.id, bad:p.id, tags, rot:kind,
+         code:[...fired, 'null', 'new', ...(rot.dir < 0 ? ['Lif', ...(kind === 'LR' ? ['Lelse'] : [])] : ['Rif', ...(kind === 'RL' ? ['Relse'] : [])])]});
 
       let nr;
       if(kind === 'LL'){ p.b = 0; q.b = 0; p.l = q.r; q.r = p; nr = q; }
@@ -201,13 +409,14 @@
       }[kind];
       snap(`После поворота ${kind}`,
         `${how}<span class="l">Высота поддерева вернулась к прежней, поэтому выше балансы уже не меняются.</span>`,
-        {newId:node.id, tags:Object.assign({}, tags), rot:kind});
+        {newId:node.id, tags:Object.assign({}, tags), rot:kind,
+         code:[kind, kind === 'LR' ? 'Lelse' : kind === 'RL' ? 'Relse' : kind]});
     }
 
     const h = S.height(root);
     snap('Готово: АВЛ-дерево построено',
       `Высота <b>H = ${h}</b>, средняя глубина <b>${S.avgDepth(root).toFixed(2)}</b>, поворотов выполнено: <b>${rotations}</b>.<span class="l">У каждого узла |bal| ≤ 1 — дерево сбалансировано. Высота АВЛ-дерева не превышает 1.44·log₂(n+2).</span>`,
-      {});
+      {code:[]});
     player.setSteps(steps);
   }
 
