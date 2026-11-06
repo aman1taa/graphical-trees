@@ -349,11 +349,10 @@
   TS.initTheme = function(){
     const root = document.documentElement;
     const btn = document.getElementById('themeBtn');
-    const ORDER = ['light', 'dark', 'amoled'];
+    const ORDER = ['light', 'dark'];
     const ICONS = {
       light:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
-      dark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
-      amoled:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></svg>'
+      dark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>'
     };
     function current(){
       if(root.dataset.theme) return root.dataset.theme;
@@ -363,7 +362,7 @@
       if(!btn) return;
       const th = current();
       btn.innerHTML = ICONS[th];
-      btn.title = th === 'light' ? 'Тёмная тема' : th === 'dark' ? 'AMOLED-тема' : 'Светлая тема';
+      btn.title = th === 'light' ? 'Тёмная тема' : 'Светлая тема';
     }
     try{
       const saved = localStorage.getItem('tree-theme');
@@ -378,42 +377,6 @@
   };
   TS.initTheme();
 
-  /* ---------- Позиция курсора для подсветки краёв стекла ---------- */
-  TS.initGlassCursor = function(){
-    if(!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    const root = document.documentElement;
-    const SEL = '.card,details,.meter-box,.hero,.tile,.topbar .back,button';
-    const R = 300;
-    let els = null, lit = new Set(), px = -1e4, py = -1e4, raf = 0;
-    /* список элементов кэшируем: пересобираем только при изменении DOM */
-    new MutationObserver(() => { els = null; }).observe(document.body, {childList:true, subtree:true});
-    function clear(){
-      lit.forEach(el => { el.style.removeProperty('--gx'); el.style.removeProperty('--gy'); });
-      lit.clear();
-    }
-    function apply(){
-      raf = 0;
-      if(root.dataset.theme !== 'amoled'){ clear(); return; }
-      if(!els) els = Array.from(document.querySelectorAll(SEL));
-      const next = new Set();
-      for(const el of els){
-        const r = el.getBoundingClientRect();
-        if(r.bottom < py - R || r.top > py + R || r.right < px - R || r.left > px + R) continue;
-        el.style.setProperty('--gx', px + 'px');
-        el.style.setProperty('--gy', py + 'px');
-        next.add(el);
-      }
-      lit.forEach(el => { if(!next.has(el)){ el.style.removeProperty('--gx'); el.style.removeProperty('--gy'); } });
-      lit = next;
-    }
-    window.addEventListener('pointermove', e => {
-      px = e.clientX; py = e.clientY;
-      if(!raf) raf = requestAnimationFrame(apply);
-    }, {passive:true});
-    root.addEventListener('mouseleave', () => { px = py = -1e4; if(!raf) raf = requestAnimationFrame(apply); });
-  };
-  TS.initGlassCursor();
-
   /* ---------- Общая отрисовка шага с полоской ---------- */
   TS.drawBinaryStep = function(canvas, step, opts){
     canvas.classList.toggle('compact', !step.tree);
@@ -421,218 +384,4 @@
     TS.renderBinary(canvas.querySelector('.tree-host'), step, opts);
   };
 
-  /* ---------- Liquid glass: SVG-фильтр преломления под размер каждого hero ---------- */
-  TS.initLiquidGlass = function(){
-    function mapDataUrl(w, h){
-      const RAD = Math.max(24, Math.round(Math.min(w, h) * .3));
-      const RING = Math.max(26, Math.round(Math.min(w, h) * .22));
-      const rr = (x, a, b, ww, hh, r) => {
-        x.beginPath();
-        if(x.roundRect){ x.roundRect(a, b, ww, hh, r); return; }
-        x.rect(a, b, ww, hh);
-      };
-      /* карта смещения: центр нейтрален, у краёв градиенты (красный — X, зелёный — Y) */
-      const grad = document.createElement('canvas');
-      grad.width = w; grad.height = h;
-      const g = grad.getContext('2d');
-      const gx = g.createLinearGradient(0, 0, w, 0);
-      gx.addColorStop(0, '#000'); gx.addColorStop(1, '#f00');
-      g.fillStyle = gx; g.fillRect(0, 0, w, h);
-      g.globalCompositeOperation = 'screen';
-      const gy = g.createLinearGradient(0, 0, 0, h);
-      gy.addColorStop(0, '#000'); gy.addColorStop(1, '#0f0');
-      g.fillStyle = gy; g.fillRect(0, 0, w, h);
-      const mask = document.createElement('canvas');
-      mask.width = w; mask.height = h;
-      const m = mask.getContext('2d');
-      m.filter = 'blur(' + Math.round(RING * .6) + 'px)';
-      m.fillStyle = '#fff';
-      rr(m, 0, 0, w, h, RAD); m.fill();
-      m.globalCompositeOperation = 'destination-out';
-      m.filter = 'blur(' + Math.round(RING * .45) + 'px)';
-      rr(m, RING, RING, w - 2 * RING, h - 2 * RING, Math.max(0, RAD - RING)); m.fill();
-      g.globalCompositeOperation = 'destination-in';
-      g.drawImage(mask, 0, 0);
-      const base = document.createElement('canvas');
-      base.width = w; base.height = h;
-      const bx = base.getContext('2d');
-      bx.fillStyle = 'rgb(128,128,128)';
-      bx.fillRect(0, 0, w, h);
-      bx.drawImage(grad, 0, 0);
-      return base.toDataURL();
-    }
-
-    let host = null;
-    function build(){
-      try{
-        if(host){ host.remove(); host = null; }
-        document.querySelectorAll('.hero').forEach(el => { el.style.backdropFilter = ''; el.style.webkitBackdropFilter = ''; });
-        /* фильтр преломления дорогой: нужен только в AMOLED и только с мышью */
-        if(document.documentElement.dataset.theme !== 'amoled' || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-        const NS = 'http://www.w3.org/2000/svg';
-        host = document.createElementNS(NS, 'svg');
-        host.setAttribute('width', '0');
-        host.setAttribute('height', '0');
-        host.style.position = 'absolute';
-        document.querySelectorAll('.hero').forEach((el, k) => {
-          const w = Math.max(60, Math.round(el.offsetWidth));
-          const h = Math.max(60, Math.round(el.offsetHeight));
-          const filter = document.createElementNS(NS, 'filter');
-          const id = 'lgFilter' + k;
-          filter.setAttribute('id', id);
-          filter.setAttribute('filterUnits', 'userSpaceOnUse');
-          filter.setAttribute('primitiveUnits', 'userSpaceOnUse');
-          filter.setAttribute('x', '0');
-          filter.setAttribute('y', '0');
-          filter.setAttribute('width', w);
-          filter.setAttribute('height', h);
-          const url = mapDataUrl(w, h);
-          const feImage = document.createElementNS(NS, 'feImage');
-          feImage.setAttribute('href', url);
-          feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
-          feImage.setAttribute('x', '0');
-          feImage.setAttribute('y', '0');
-          feImage.setAttribute('width', w);
-          feImage.setAttribute('height', h);
-          feImage.setAttribute('preserveAspectRatio', 'none');
-          feImage.setAttribute('result', 'map');
-          const feDisp = document.createElementNS(NS, 'feDisplacementMap');
-          feDisp.setAttribute('in', 'SourceGraphic');
-          feDisp.setAttribute('in2', 'map');
-          feDisp.setAttribute('scale', '48');
-          feDisp.setAttribute('xChannelSelector', 'R');
-          feDisp.setAttribute('yChannelSelector', 'G');
-          filter.appendChild(feImage);
-          filter.appendChild(feDisp);
-          host.appendChild(filter);
-          const bf = 'blur(3px) saturate(170%) url(#' + id + ')';
-          el.style.backdropFilter = bf;
-          el.style.webkitBackdropFilter = bf;
-        });
-        document.body.appendChild(host);
-      }catch(e){}
-    }
-    build();
-    let rt = null;
-    window.addEventListener('resize', () => {
-      clearTimeout(rt);
-      rt = setTimeout(build, 250);
-    });
-    new MutationObserver(() => { clearTimeout(rt); rt = setTimeout(build, 50); })
-      .observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
-  };
-  TS.initLiquidGlass();
-
-  /* ---------- Динамический фон из частиц ---------- */
-  TS.initParticles = function(){
-    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const canvas = document.createElement('canvas');
-    canvas.id = 'particleBg';
-    canvas.setAttribute('aria-hidden', 'true');
-    document.body.insertBefore(canvas, document.body.firstChild);
-    const ctx = canvas.getContext('2d');
-    if(!ctx) return;
-
-    let W = 0, H = 0, palette = [], amoled = false, activeN = 0, MINFRAME = 0;
-    function readPalette(){
-      amoled = document.documentElement.dataset.theme === 'amoled';
-      /* в AMOLED под стеклом пересчитывается размытие каждый кадр — облегчаем: 30 к/с и меньше частиц */
-      MINFRAME = amoled ? 15 : 0;
-      activeN = typeof parts !== 'undefined' ? (amoled ? Math.min(parts.length, 60) : parts.length) : 0;
-      if(canvas.width) resize();
-      if(amoled){
-        palette = ['#ffffff', '#ffffff', '#ffffff', '#ffffff'];
-        return;
-      }
-      const cs = getComputedStyle(document.documentElement);
-      palette = ['--ac', '--ok', '--vio', '--warn'].map(v => cs.getPropertyValue(v).trim());
-    }
-    function resize(){
-      const dpr = Math.min(amoled ? 1.5 : 2, window.devicePixelRatio || 1);
-      W = window.innerWidth; H = window.innerHeight;
-      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-      canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    const parts = [];
-    readPalette();
-    resize();
-    window.addEventListener('resize', resize);
-    new MutationObserver(readPalette).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
-    try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readPalette); }catch(e){}
-
-    const COUNT = Math.max(36, Math.min(110, Math.round(W * H / 16000)));
-    for(let i = 0; i < COUNT; i++){
-      parts.push({
-        x:Math.random() * W, y:Math.random() * H,
-        vx:(Math.random() - .5) * .4, vy:(Math.random() - .5) * .4,
-        r:1.3 + Math.random() * 1.9,
-        ci:(Math.random() * 4) | 0,
-        a:.16 + Math.random() * .3,
-        k:.8 + Math.random() * .5,
-        in:false
-      });
-    }
-
-    activeN = amoled ? Math.min(parts.length, 60) : parts.length;
-    let mx = -1e4, my = -1e4;
-    window.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; }, {passive:true});
-    document.documentElement.addEventListener('mouseleave', () => { mx = -1e4; my = -1e4; });
-
-    /* Магнитное поле: внутри радиуса — пружина к центру курсора с демпфированием
-       и лёгким броуновским дрожанием. При выходе из поля частица получает
-       дополнительный случайный импульс, который затухает за 1–2 секунды. */
-    const MAGNET = 80, K = .014, DAMP = .085, WANDER = .03, DRAG = .968, MAXV = 18, JITTER = .04, BOOST = 2.5;
-
-    let last = performance.now();
-    function frame(t){
-      if(t - last < MINFRAME){ requestAnimationFrame(frame); return; }
-      const dt = Math.min(2.5, Math.max(.2, (t - last) / 16.667));
-      last = t;
-
-      ctx.clearRect(0, 0, W, H);
-      for(let pi = 0; pi < activeN; pi++){
-        const p = parts[pi];
-        const dx = mx - p.x, dy = my - p.y;
-        const d2 = dx * dx + dy * dy;
-        const inField = d2 < MAGNET * MAGNET;
-        let dmp;
-        if(inField){
-          p.vx += dx * K * p.k * dt + (Math.random() - .5) * JITTER * dt;
-          p.vy += dy * K * p.k * dt + (Math.random() - .5) * JITTER * dt;
-          dmp = Math.pow(1 - DAMP, dt);
-        } else {
-          if(p.in){
-            /* отпускание: дополнительный рывок в случайную сторону —
-               вперёд частицу несёт скорость, набранная при погоне за курсором */
-            const ang = Math.random() * Math.PI * 2;
-            const imp = BOOST + Math.random() * 3;
-            p.vx += Math.cos(ang) * imp;
-            p.vy += Math.sin(ang) * imp;
-          }
-          p.vx += (Math.random() - .5) * WANDER * dt;
-          p.vy += (Math.random() - .5) * WANDER * dt;
-          dmp = Math.pow(DRAG, dt);
-        }
-        p.in = inField;
-        p.vx *= dmp; p.vy *= dmp;
-        const sp = Math.hypot(p.vx, p.vy);
-        if(sp > MAXV){ p.vx *= MAXV / sp; p.vy *= MAXV / sp; }
-        p.x += p.vx * dt; p.y += p.vy * dt;
-        if(p.x < -12) p.x = W + 12; else if(p.x > W + 12) p.x = -12;
-        if(p.y < -12) p.y = H + 12; else if(p.y > H + 12) p.y = -12;
-
-        ctx.globalAlpha = Math.min(.9, p.a + Math.min(.3, sp * .02));
-        ctx.fillStyle = palette[p.ci] || '#3b6fe0';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 6.2832);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-    TS._particles = parts;
-  };
-  TS.initParticles();
 })();
