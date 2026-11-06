@@ -39,6 +39,13 @@
       <button class="p" id="go" type="button">Построить</button>
     </div>
     <div class="meta" style="margin-top:9px">До 20 ключей. Повторяющиеся символы добавляются как отдельные записи — так видны коллизии.</div>
+    <div class="row" style="margin-top:12px">
+      <div class="field" style="flex:0 1 150px">
+        <label for="find">Поиск ключа</label>
+        <input id="find" maxlength="2" autocomplete="off" spellcheck="false" placeholder="Например: П">
+      </div>
+      <button id="findBtn" type="button">Найти</button>
+    </div>
   </section>
 
   <div class="row tabs wrap" id="methodTabs" role="tablist" aria-label="Метод разрешения коллизий">
@@ -48,6 +55,7 @@
 
   <div id="stage"></div>
   <div class="hash-stats" id="hashStats"></div>
+  <div id="searchResult"></div>
 
   <details>
     <summary>Метод прямого связывания (цепочки)</summary>
@@ -92,6 +100,7 @@
   let method = 'chain';
   let probe = 'linear';
   let steps = [];
+  let lastTable = null, lastSlots = null, lastM = 0;
 
   const player = S.mountPlayer($('stage'), {
     autoplay: 1100,
@@ -216,6 +225,7 @@
       text:`Вставлено ключей: <b>${inserted}</b>. Коллизий: <b>${collisions}</b>. Просмотров элементов цепочек: <b>${probes}</b>.<span class="l">Коэффициент заполнения α = ${inserted}/${m} ≈ ${(inserted / m).toFixed(2)}. Занято ячеек: ${used} из ${m}, максимальная длина цепочки: ${maxChain}.</span>`,
       html: renderChain(table.map(b => b.slice()))
     });
+    lastTable = table.map(b => b.slice()); lastSlots = null; lastM = m;
   }
 
   function buildOpen(keys, m){
@@ -285,6 +295,7 @@
       text:`Вставлено ключей: <b>${inserted}</b> из ${keys.length}. Коллизий: <b>${collisions}</b>. Всего проб: <b>${probes}</b>${failed ? `, не поместилось: <b>${failed}</b>` : ''}.<span class="l">Коэффициент заполнения α = ${inserted}/${m} ≈ ${(inserted / m).toFixed(2)}. ${probe === 'quad' ? 'Квадратичное опробование разносит пробы дальше и меньше склонно к первичным кластерам, чем линейное.' : 'Линейное опробование образует кластеры: чем выше α, тем длиннее пробы.'}</span>`,
       html: renderOpen(slots)
     });
+    lastSlots = slots.slice(); lastTable = null; lastM = m;
   }
 
   function probePath(start, end, m){
@@ -300,6 +311,41 @@
     return path;
   }
 
+  function search(){
+    const key = [...$('find').value.trim()][0] || '';
+    const m = lastM;
+    if(!key || !m){ $('searchResult').innerHTML = ''; return; }
+    if(method === 'chain'){
+      if(!lastTable){ $('searchResult').innerHTML = ''; return; }
+      const h = hashOf(key, m);
+      const bucket = lastTable[h] || [];
+      let pos = -1, cmp = 0;
+      for(let i = 0; i < bucket.length; i++){ cmp++; if(bucket[i] === key){ pos = i; break; } }
+      const cmpArr = pos >= 0 ? Array.from({length: pos + 1}, (_, j) => j) : bucket.map((_, j) => j);
+      const html = renderChain(lastTable, {hot:h, cmp:cmpArr});
+      const text = pos >= 0
+        ? `Ключ «<b>${S.esc(key)}</b>»: хеш <code>${S.code(key)} mod ${m} = ${h}</code>. Найден в цепочке ${h} на позиции <b>${pos}</b>; сравнений в цепочке — <b>${cmp}</b>.`
+        : `Ключ «<b>${S.esc(key)}</b>»: хеш <code>${S.code(key)} mod ${m} = ${h}</code>. В цепочке ${h} не найден — просмотрено <b>${cmp}</b> ${cmp === 1 ? 'элемент' : 'элементов'}.`;
+      $('searchResult').innerHTML = `<div class="card" style="margin-top:12px"><h2>Поиск ключа</h2><p>${text}</p>${html}</div>`;
+    } else {
+      if(!lastSlots){ $('searchResult').innerHTML = ''; return; }
+      const h = hashOf(key, m);
+      let pos = h, i = 0, probes = 0, found = false;
+      while(probes < m){
+        probes++;
+        if(lastSlots[pos] === key){ found = true; break; }
+        if(lastSlots[pos] === null) break;
+        i++;
+        pos = probe === 'quad' ? (h + i * i) % m : (pos + 1) % m;
+      }
+      const html = renderOpen(lastSlots, {probe:probePath(h, pos, m), current:pos});
+      const text = found
+        ? `Ключ «<b>${S.esc(key)}</b>»: стартовая ячейка <code>${S.code(key)} mod ${m} = ${h}</code>. Найден в ячейке <b>${pos}</b> за <b>${probes}</b> ${probes === 1 ? 'пробу' : 'проб'}.`
+        : `Ключ «<b>${S.esc(key)}</b>»: стартовая ячейка <code>${S.code(key)} mod ${m} = ${h}</code>. Не найден за <b>${probes}</b> ${probes === 1 ? 'пробу' : 'проб'}.`;
+      $('searchResult').innerHTML = `<div class="card" style="margin-top:12px"><h2>Поиск ключа</h2><p>${text}</p>${html}</div>`;
+    }
+  }
+
   $('methodTabs').addEventListener('click', e => {
     const b = e.target.closest('[data-method]');
     if(!b) return;
@@ -311,6 +357,8 @@
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('size').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('probe').onchange = build;
+  $('findBtn').onclick = search;
+  $('find').addEventListener('keydown', e => { if(e.key === 'Enter') search(); });
   build();
 
   S.mountQuiz($('quiz'), {
