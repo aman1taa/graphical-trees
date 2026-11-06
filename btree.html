@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Двоичное Б-дерево поиска по шагам</title>
+<title>Двоичное Б-дерево поиска (ДБД) по шагам</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -13,40 +13,30 @@
   <button class="theme" id="themeBtn" type="button" title="Сменить тему">☾</button>
 </header>
 <main>
-  <h1>Двоичное Б-дерево поиска по шагам</h1>
-  <p class="lead">B-дерево хранит несколько ключей в одном узле. При порядке <b>m</b> узел (кроме корня) содержит от ⌈m/2⌉−1 до m−1 ключей и до m потомков. При порядке 4 получается классическое 2-3-4 дерево: 1–3 ключа и 2–4 потомка. Переполненный узел при вставке расщепляется, а медиана поднимается в родителя.</p>
+  <h1>Двоичное Б-дерево поиска (ДБД) по шагам</h1>
+  <p class="lead">ДБД — двоичное представление Б-дерева с страницами из 1–2 ключей. Ключи одной страницы связаны <b>горизонтальной</b> стрелкой вправо, а <b>вертикальные</b> стрелки ведут к потомкам и указывают на первый элемент страницы-цепочки. Если <b>bal = 1</b>, правая связь вершины горизонтальная.</p>
 
   <section class="card">
     <div class="row">
       <div class="field">
         <label for="inp">Буквы в порядке вставки</label>
-        <input id="inp" value="ABCDEFG" autocomplete="off" spellcheck="false" placeholder="Например: ABCDEFG">
-      </div>
-      <div class="field" style="flex:0 1 160px">
-        <label for="order">Порядок m</label>
-        <select id="order">
-          <option value="3" selected>3 — 2-3 дерево</option>
-          <option value="4">4 — 2-3-4 дерево</option>
-          <option value="5">5 — 3-4-5 дерево</option>
-          <option value="6">6</option>
-        </select>
+        <input id="inp" value="QWERTYUIOP" autocomplete="off" spellcheck="false" placeholder="Например: QWERTYUIOP">
       </div>
       <button class="p" id="go" type="button">Построить</button>
       <button id="ex" type="button">Пример</button>
     </div>
-    <div class="meta" id="props" style="margin-top:9px"></div>
+    <div class="meta" style="margin-top:9px">Повторяющиеся буквы пропускаются. До 20 ключей. Кнопка «{ } посмотреть код» справа открывает функцию вставки на C.</div>
   </section>
 
   <div id="stage"></div>
 
   <details>
-    <summary>Свойства B-дерева порядка m</summary>
+    <summary>Как работает вставка в ДБД</summary>
     <ul>
-      <li>Все листья находятся на одном уровне — дерево идеально сбалансировано по высоте.</li>
-      <li>В каждом узле, кроме корня, от ⌈m/2⌉−1 до m−1 ключей; корень — от 1 до m−1.</li>
-      <li>Ключи в узле упорядочены, а потомки разделяют диапазоны между соседними ключами.</li>
-      <li>Вставка идёт к листу: ключ добавляется в лист, и если ключей стало больше m−1, узел расщепляется, а медиана поднимается в родителя. Волна расщеплений может дойти до корня.</li>
-      <li>Высота B-дерева растёт как O(log<sub>m</sub> n), а число обращений к диску — меньше, чем у двоичных деревьев.</li>
+      <li>Ключ спускается как в обычном дереве поиска и добавляется листом по вертикальной связи (<code>vr = 1</code>).</li>
+      <li>При подъёме смотрим флаги <code>vr</code> и <code>hr</code>. Вертикальная связь справа превращается в горизонтальную, а слева — поворачивается в страницу из двух ключей.</li>
+      <li>Если в странице оказалось три ключа, средний поднимается на уровень выше — это расщепление страницы.</li>
+      <li>Все страницы-листья остаются на одном уровне, поэтому высота растёт только через корень.</li>
     </ul>
   </details>
 
@@ -56,143 +46,225 @@
   </nav>
 </main>
 <script src="assets/core.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
-  const S = window.TreeSite;
-  const $ = S.$;
-  let root = null, seq = 0, steps = [], order = 4;
-  const mk = (keys, ch) => ({id:++seq, keys:keys || [], ch:ch || []});
+  const S = window.TreeSite, $ = S.$, esc = S.esc;
+  let root = null, seq = 0, steps = [], VR = 1, HR = 1;
+  const mk = d => ({id:++seq, d, b:0, l:null, r:null});
+
+  const CODE = [
+    ['struct vertex {', ''],
+    ['    int data;', ''],
+    ['    int bal;              /* 0 — правая связь вертикальная, 1 — горизонтальная */', ''],
+    ['    struct vertex *left, *right;', ''],
+    ['};', ''],
+    ['', ''],
+    ['int vr = 1, hr = 1;', 'glob'],
+    ['', ''],
+    ['struct vertex* b2insert(int data, struct vertex *p) {', 'sig'],
+    ['    struct vertex *q;', 'sig'],
+    ['    if (!p) {', 'null'],
+    ['        p = malloc(sizeof(struct vertex));', 'new'],
+    ['        p->data = data;', 'new'],
+    ['        p->left = NULL;', 'new'],
+    ['        p->right = NULL;', 'new'],
+    ['        p->bal = 0;', 'new'],
+    ['        vr = 1;', 'new'],
+    ['    }', ''],
+    ['', ''],
+    ['    else if (p->data > data) {', 'cmpL'],
+    ['        p->left = b2insert(data, p->left);', 'recL'],
+    ['        if (vr == 1) {', 'chkL'],
+    ['            if (p->bal == 0) {', 'Lbal0'],
+    ['                q = p->left;', 'LL'],
+    ['                p->left = q->right;', 'LL'],
+    ['                q->right = p;', 'LL'],
+    ['                p = q;', 'LL'],
+    ['                q->bal = 1;', 'LL'],
+    ['                vr = 0;', 'LL'],
+    ['                hr = 1;', 'LL'],
+    ['            }', ''],
+    ['            else {', 'Lsplit'],
+    ['                p->bal = 0;', 'Lsplit'],
+    ['                vr = 1;', 'Lsplit'],
+    ['                hr = 0;', 'Lsplit'],
+    ['            }', ''],
+    ['        }', ''],
+    ['        else hr = 0;', 'Lnone'],
+    ['    }', ''],
+    ['', ''],
+    ['    else if (p->data < data) {', 'cmpR'],
+    ['        p->right = b2insert(data, p->right);', 'recR'],
+    ['        if (vr == 1) {', 'chkR'],
+    ['            p->bal = 1;', 'Rlink'],
+    ['            hr = 1;', 'Rlink'],
+    ['            vr = 0;', 'Rlink'],
+    ['        }', ''],
+    ['        else if (hr == 1) {', 'Rchk'],
+    ['            if (p->bal == 1) {', 'Rbal1'],
+    ['                q = p->right;', 'Rrot'],
+    ['                p->bal = 0;', 'Rrot'],
+    ['                q->bal = 0;', 'Rrot'],
+    ['                p->right = q->left;', 'Rrot'],
+    ['                q->left = p;', 'Rrot'],
+    ['                p = q;', 'Rrot'],
+    ['                vr = 1;', 'Rrot'],
+    ['                hr = 0;', 'Rrot'],
+    ['            }', ''],
+    ['            else hr = 0;', 'Rnone'],
+    ['        }', ''],
+    ['    }', ''],
+    ['    return p;', 'ret'],
+    ['}', '']
+  ];
+  const pocket = S.mountPocket({
+    key:'dbdCodeOpen',
+    title:'Вставка в ДБД на C',
+    desc:'Функция <code>b2insert</code>: вертикальные и горизонтальные связи управляются флагами <code>vr</code> и <code>hr</code>. Подсвечены строки текущего шага.',
+    foot:'<b>p, q</b> — это P, Q на схеме. <b>bal</b> = 1, если правая связь горизонтальная; <b>vr</b> = 1, пока вершина поднялась по вертикали; <b>hr</b> = 1, пока сверху страница с горизонтальной связью.',
+    code:CODE
+  });
+
+  /* ---------- Рисование: вертикальные и горизонтальные стрелки ---------- */
+  function drawDBD(el, snap){
+    const t = snap.tree;
+    if(!t){ el.innerHTML = '<div class="empty">Дерево пусто</div>'; return; }
+    const GAP = 58, LVL = 74, R = 17;
+    let x = 0, depth = 0;
+    const pos = {};
+    (function walk(n, d){
+      if(!n) return;
+      walk(n.l, d + 1);
+      pos[n.id] = {x:x++, d};
+      if(d > depth) depth = d;
+      walk(n.r, n.b ? d : d + 1);   /* горизонтальная связь — тот же уровень */
+    })(t, 0);
+    const innerW = (x - 1) * GAP, W = Math.max(innerW + 70, 300), H = depth * LVL + 78, ox = (W - innerW) / 2;
+    const X = n => ox + pos[n.id].x * GAP, Y = n => 28 + pos[n.id].d * LVL;
+    const path = new Set(snap.path || []), tags = snap.tags || {};
+    let e = '', v = '';
+    function arrow(a, b, hor){
+      const dx = X(b) - X(a), dy = Y(b) - Y(a), L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      e += `<line x1="${X(a) + ux * R}" y1="${Y(a) + uy * R}" x2="${X(b) - ux * (R + 1)}" y2="${Y(b) - uy * (R + 1)}" stroke="var(--tx)" stroke-width="1.7" marker-end="url(#ah)"/>`;
+    }
+    (function walk(n){
+      if(!n) return;
+      if(n.l) arrow(n, n.l, false);
+      if(n.r) arrow(n, n.r, !!n.b);
+      walk(n.l); walk(n.r);
+    })(t);
+    (function walk(n){
+      if(!n) return;
+      walk(n.l); walk(n.r);
+      const cx = X(n), cy = Y(n), isNew = n.id === snap.newId;
+      let fill = isNew ? 'var(--ok)' : 'var(--node)', stroke = isNew ? 'var(--ok)' : 'var(--bd)', sw = 1.5;
+      if(path.has(n.id)){ stroke = 'var(--ac)'; sw = 3; }
+      if(tags[n.id]){ stroke = 'var(--ac)'; sw = 3.5; }
+      v += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      v += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="16" font-weight="600" fill="${isNew ? '#fff' : 'var(--tx)'}">${esc(n.d)}</text>`;
+      v += `<text x="${cx}" y="${cy + 35}" text-anchor="middle" font-size="11.5" fill="var(--mut)">bal ${n.b}</text>`;
+      if(tags[n.id]) v += `<text x="${cx - 25}" y="${cy - 13}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ac)">${esc(tags[n.id])}</text>`;
+    })(t);
+    const mark = (id, col) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="${col}"/></marker>`;
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img"><defs>${mark('ah', 'var(--tx)')}</defs>${e}${v}</svg>`;
+  }
 
   const player = S.mountPlayer($('stage'), {
-    legend: '<span><i class="dot" style="background:var(--ac)"></i>узел на пути / изменённый узел</span><span><i class="dot" style="background:var(--ok)"></i>вставленный или поднятый ключ</span>',
+    legend:'<span><i class="dot" style="background:var(--ok)"></i>новая вершина</span><span>↓ вертикальная стрелка — к первому элементу страницы</span><span>→ горизонтальная — следующий ключ той же страницы</span><span>P, Q — участники поворота</span>',
     render(canvas, step){
+      canvas.classList.toggle('compact', !step.tree);
       canvas.innerHTML = '<div class="tree-host"></div>';
-      S.renderBTree(canvas.querySelector('.tree-host'), step);
-    }
+      drawDBD(canvas.firstChild, step);
+    },
+    onStep(step){ pocket.show(step.code); }
   });
 
   function snap(title, text, extra){
-    steps.push(Object.assign({title, text, tree:S.cloneB(root)}, extra || {}));
+    steps.push(Object.assign({title, text, tree:S.clone(root)}, extra || {}));
   }
-  const fmtNode = n => '[' + n.keys.map(S.esc).join(' ') + ']';
 
-  function findIndex(n, key){
-    let i = 0;
-    while(i < n.keys.length && key > n.keys[i]) i++;
-    return i;
-  }
-  function contains(n, key){
-    while(n){
-      const i = findIndex(n, key);
-      if(n.keys[i] === key) return true;
-      if(!n.ch.length) return false;
-      n = n.ch[i];
-    }
-    return false;
-  }
-  function insert(key){
-    if(contains(root, key)){
-      snap(`«${key}» уже есть`,
-        `Ключ «<b>${S.esc(key)}</b>» найден при спуске — дубликаты в B-дерево не добавляем.`,
-        {});
-      return;
-    }
-    if(!root){
-      root = mk([key], []);
-      snap(`Вставка «${key}»`,
-        `Дерево пустое: создаём корень ${fmtNode(root)}.`,
-        {hiNode:root.id, hiKey:key});
-      return;
-    }
+  /* ---------- Вставка: пошаговая копия функции b2insert ---------- */
+  function insert(D){
+    const cmp = [], log = [], ct = ['sig'];
+    const flush = () => { const s = log.length ? `<span class="l">Подъём: ${log.join('<br>')}</span>` : ''; log.length = 0; return s; };
 
-    let t = root, trace = [], path = [], walkText = [];
-    while(true){
-      path.push(t.id);
-      const i = findIndex(t, key);
-      const keys = fmtNode(t);
-      if(!t.ch.length){
-        walkText.push(`${keys}: ключ «${S.esc(key)}» — в лист, позиция ${i}.`);
-        break;
+    function ins(p, set){
+      if(!p){
+        p = mk(D); set(p); VR = 1;
+        snap(`Вставка «${D}»: новая вершина`,
+          `Спуск: ${cmp.join('; ') || 'дерево пусто'}.<br>Место найдено — создаём «<b>${esc(D)}</b>», bal = 0, vr = 1.<span class="l">Связь с родителем пока вертикальная. Теперь поднимаемся к корню и смотрим флаги vr и hr.</span>`,
+          {newId:p.id, code:[...ct, 'null', 'new']});
+        return;
       }
-      walkText.push(`${keys}: ключ «${S.esc(key)}» ${i < t.keys.length ? '&lt; «' + S.esc(t.keys[i]) + '» → потомок ' + i : '&gt; всех ключей → потомок ' + i}.`);
-      trace.push({n:t, i});
-      t = t.ch[i];
-    }
-    snap(`Вставка «${key}»: спуск от корня`,
-      walkText.join('<br>'),
-      {nodes:path});
+      const left = D < p.d, P = esc(p.d);
+      cmp.push(`${esc(D)} ${left ? '&lt;' : '&gt;'} ${P} → ${left ? 'влево' : 'вправо'}`);
+      ct.push(left ? 'cmpL' : 'cmpR', left ? 'recL' : 'recR');
+      ins(left ? p.l : p.r, n => { if(left) p.l = n; else p.r = n; });
 
-    const pos = findIndex(t, key);
-    t.keys.splice(pos, 0, key);
-    const overfull = t.keys.length >= order;
-    snap(`Ключ «${key}» добавлен в лист`,
-      `В узел ${fmtNode(t)} ключ вставлен на позицию ${pos}.<span class="l">${overfull ? `Узел временно содержит ${t.keys.length} ключей при максимуме ${order - 1} — нужно расщепление.` : 'Число ключей не превышает максимум — вставка завершена.'}</span>`,
-      {hiNode:t.id, hiKey:key});
-
-    let node = t;
-    while(node.keys.length >= order){
-      const mid = Math.floor(node.keys.length / 2);
-      const promoted = node.keys[mid];
-      const left = mk(node.keys.slice(0, mid), node.ch.slice(0, mid + 1));
-      const right = mk(node.keys.slice(mid + 1), node.ch.slice(mid + 1));
-      const parentInfo = trace.pop();
-      if(!parentInfo){
-        root = mk([promoted], [left, right]);
-        snap(`Расщепление корня: медиана «${promoted}»`,
-          `Корень переполнен. Медиана «<b>${S.esc(promoted)}</b>» становится новым корнем, ключи делятся на двух потомков: ${fmtNode(left)} и ${fmtNode(right)}.<span class="l">Высота дерева увеличилась на 1 — это единственный способ роста B-дерева.</span>`,
-          {nodes:[root.id], hiNode:root.id, hiKey:promoted});
-        break;
+      if(left){
+        if(VR === 1){
+          if(p.b === 0){
+            const q = p.l, Q = esc(q.d);
+            p.l = q.r; q.r = p; q.b = 1; set(q); VR = 0; HR = 1;
+            snap(`Слева от «${p.d}»: поворот в страницу из двух ключей`,
+              `Вершина Q=«${Q}» поднялась слева, у P=«${P}» правая связь вертикальная (bal = 0). Q встаёт на место P, а P становится её правым потомком по <b>горизонтальной</b> связи; bal(Q) = 1.<span class="l">Теперь vr = 0, hr = 1: сверху видна страница из двух ключей.</span>${flush()}`,
+              {tags:{[q.id]:'Q', [p.id]:'P'}, code:['recL', 'chkL', 'Lbal0', 'LL']});
+          } else {
+            p.b = 0; VR = 1; HR = 0;
+            snap(`Слева от «${p.d}»: расщепление страницы`,
+              `У P=«${P}» уже горизонтальная связь (bal = 1): в странице два ключа, слева добавился третий.<span class="l">P становится средним: bal(P) = 0, обе связи вертикальные, vr = 1 — P поднимается на уровень выше, hr = 0.</span>${flush()}`,
+              {tags:{[p.id]:'P'}, code:['recL', 'chkL', 'Lbal0', 'Lsplit']});
+          }
+        } else { HR = 0; log.push(`«${P}»: слева vr = 0, ставим hr = 0.`); }
+      } else {
+        if(VR === 1){
+          p.b = 1; HR = 1; VR = 0;
+          snap(`Справа от «${p.d}»: связь становится горизонтальной`,
+            `Справа поднялась вершина, значит bal(P) = 1: «${P}» и правый потомок теперь лежат в одной странице. vr = 0, hr = 1.${flush()}`,
+            {tags:{[p.id]:'P'}, code:['recR', 'chkR', 'Rlink']});
+        } else if(HR === 1){
+          if(p.b === 1){
+            const q = p.r, Q = esc(q.d);
+            p.b = 0; q.b = 0; p.r = q.l; q.l = p; set(q); VR = 1; HR = 0;
+            snap(`Справа от «${p.d}»: три ключа подряд — поворот`,
+              `P=«${P}» связана горизонтально с Q=«${Q}», а у Q тоже горизонтальная связь вправо: в странице три ключа.<span class="l">Q (средний) поднимается, P становится его левым потомком; bal(P) = bal(Q) = 0, vr = 1, hr = 0.</span>${flush()}`,
+              {tags:{[q.id]:'Q', [p.id]:'P'}, code:['recR', 'chkR', 'Rchk', 'Rbal1', 'Rrot']});
+          } else { HR = 0; log.push(`«${P}»: справа hr = 1, но bal = 0 — страница из двух ключей на месте, hr = 0.`); }
+        } else log.push(`«${P}»: vr = 0, hr = 0 — изменений нет.`);
       }
-      const parent = parentInfo.n;
-      parent.keys.splice(parentInfo.i, 0, promoted);
-      parent.ch.splice(parentInfo.i, 1, left, right);
-      snap(`Расщепление: медиана «${promoted}» поднята`,
-        `Переполненный узел разделён на ${fmtNode(left)} и ${fmtNode(right)}; медиана «<b>${S.esc(promoted)}</b>» вставлена в родителя ${fmtNode(parent)}.<span class="l">${parent.keys.length >= order ? 'Родитель тоже переполнен — расщепление продолжается вверх.' : 'Родитель не переполнен — вставка завершена.'}</span>`,
-        {nodes:[parent.id], hiNode:parent.id, hiKey:promoted});
-      node = parent;
     }
+    ins(root, n => { root = n; });
+    if(log.length) snap(`«${D}» вставлен`, `Остальные уровни не меняются.${flush()}`, {code:['ret']});
   }
 
-  function levelInfo(){
-    let maxDepth = 0, leaves = 0, leafDepth = null, same = true;
-    (function walk(n, d){
-      maxDepth = Math.max(maxDepth, d);
-      if(!n.ch.length){
-        leaves++;
-        if(leafDepth === null) leafDepth = d;
-        else if(leafDepth !== d) same = false;
-      }
-      n.ch.forEach(c => walk(c, d + 1));
-    })(root, 0);
-    return {height:maxDepth + 1, leaves, same};
+  function stats(){
+    let n = 0, h = 0, hor = 0;
+    (function w(a, d){ if(!a) return; n++; if(d + 1 > h) h = d + 1; if(a.b) hor++; w(a.l, d + 1); w(a.r, a.b ? d : d + 1); })(root, 0);
+    return {n, h, pages:n - hor};
   }
 
   function build(){
-    order = +$('order').value;
-    const parsed = S.parseKeys($('inp').value, 20);
-    const keys = parsed.keys;
-    seq = 0; root = null; steps = [];
-    const minKeys = Math.ceil(order / 2) - 1;
-    $('props').innerHTML = `Порядок <b>m=${order}</b>: в узле от <b>${minKeys}</b> до <b>${order - 1}</b> ключей и до <b>${order}</b> потомков.${order === 4 ? ' Это 2-3-4 дерево.' : ''}`;
+    const parsed = S.parseKeys($('inp').value, 20), keys = parsed.keys;
+    seq = 0; root = null; steps = []; VR = 1; HR = 1;
     if(!keys.length){
-      player.setSteps([{title:'Пусто', text:'Введите хотя бы одну букву.', tree:null}]);
+      player.setSteps([{title:'Пусто', text:'Введите хотя бы одну букву.', tree:null, code:[]}]);
       return;
     }
-    snap('Пустое B-дерево',
-      `Вставляем ключи в порядке <b>${keys.map(S.esc).join(' → ')}</b> при порядке m=${order}.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Вставка спускается от корня к листу; при переполнении узла медиана поднимается в родителя, и расщепление может продолжиться вверх.</span>`,
-      {});
-    for(const k of keys) insert(k);
-    const info = levelInfo();
-    snap('Готово: B-дерево построено',
-      `Ключей: <b>${keys.length}</b>, высота <b>${info.height}</b>, листьев <b>${info.leaves}</b>.<span class="l">${info.same ? 'Все листья на одном уровне — B-дерево сбалансировано по построению.' : 'Листья оказались на разных уровнях — проверьте порядок и входные данные.'}</span>`,
-      {});
+    snap('Пустое ДБД',
+      `Вставляем ключи в порядке <b>${keys.map(esc).join(' → ')}</b>.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Сначала vr = 1 и hr = 1. Каждая вставка спускается как в дереве поиска, а при подъёме флаги vr и hr решают, что делать со связями.</span>`,
+      {code:['glob']});
+    keys.forEach(insert);
+    const st = stats();
+    snap('Готово: ДБД построено',
+      `Ключей <b>${st.n}</b>, страниц <b>${st.pages}</b>, уровней страниц <b>${st.h}</b>.<span class="l">Горизонтальные стрелки объединяют ключи одной страницы, вертикальные ведут к первому элементу страницы-потомка. Все листья на одном уровне.</span>`,
+      {code:[]});
     player.setSteps(steps);
   }
 
   $('go').onclick = build;
-  $('order').onchange = build;
-  $('ex').onclick = () => { $('inp').value = 'ABCDEFGHIJ'; build(); };
+  $('ex').onclick = () => { $('inp').value = 'ABCDEFG'; build(); };
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   build();
 })();

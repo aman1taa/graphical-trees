@@ -174,10 +174,12 @@
     return {maxDepth, width:root._sub};
   };
 
-  TS.renderBTree = function(el, snap){
+  TS.renderBTree = function(el, snap, opts){
+    opts = opts || {};
+    const dots = !!opts.dots;   /* вместо перегородок — точки-указатели: • А • В • */
     const t = snap.tree;
     if(!t){ el.innerHTML = '<div class="empty">Дерево пусто</div>'; return; }
-    const CELL = 42, PAD = 8, NH = 42, LEVEL = 86;
+    const CELL = dots ? 44 : 42, PAD = 8, NH = 42, LEVEL = 86;
     const L = TS.layoutBTree(t, CELL);
     const W = Math.max(L.width + 44, 320);
     const H = L.maxDepth * LEVEL + 76;
@@ -206,9 +208,14 @@
       n.keys.forEach((k, j) => {
         const cellX = x - w / 2 + PAD + j * CELL;
         const keyHl = n.id === snap.hiNode && k === snap.hiKey;
-        if(keyHl) nodes += `<rect x="${cellX}" y="${y + 3}" width="${CELL}" height="${NH - 6}" rx="6" fill="var(--ok)"/>`;
+        if(keyHl) nodes += dots
+          ? `<rect x="${cellX + 9}" y="${y + 5}" width="${CELL - 18}" height="${NH - 10}" rx="6" fill="var(--ok)"/>`
+          : `<rect x="${cellX}" y="${y + 3}" width="${CELL}" height="${NH - 6}" rx="6" fill="var(--ok)"/>`;
         nodes += `<text x="${cellX + CELL / 2}" y="${y + NH / 2 + 5}" text-anchor="middle" font-size="15" font-weight="600" fill="${keyHl || isBad ? '#fff' : 'var(--tx)'}">${TS.esc(k)}</text>`;
-        if(j < n.keys.length - 1) nodes += `<line x1="${cellX + CELL}" y1="${y + 8}" x2="${cellX + CELL}" y2="${y + NH - 8}" stroke="var(--bd)" stroke-width="1"/>`;
+        if(dots){
+          if(j === 0) nodes += `<circle cx="${cellX}" cy="${y + NH / 2}" r="2.6" fill="${isBad ? '#fff' : 'var(--tx)'}"/>`;
+          nodes += `<circle cx="${cellX + CELL}" cy="${y + NH / 2}" r="2.6" fill="${isBad ? '#fff' : 'var(--tx)'}"/>`;
+        } else if(j < n.keys.length - 1) nodes += `<line x1="${cellX + CELL}" y1="${y + 8}" x2="${cellX + CELL}" y2="${y + NH - 8}" stroke="var(--bd)" stroke-width="1"/>`;
       });
       n.ch.forEach(walk);
     })(t);
