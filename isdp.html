@@ -42,6 +42,7 @@
   </nav>
 </main>
 <script src="assets/core.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
@@ -49,6 +50,9 @@
   const $ = S.$;
   let root = null, keys = [], seq = 0;
   const mk = d => ({id:++seq, d, l:null, r:null});
+  const CODE = [["struct vertex{", ""], ["    int data;", ""], ["    struct vertex *left;", ""], ["    struct vertex *right;", ""], ["};", ""], ["", ""], ["struct vertex* create_isdp(int L, int R, int *a){", "sig"], ["    int m = 0;", "sig"], ["    if (L>R) return NULL;", ""], ["    else {", ""], ["        m = (L + R + 1) / 2;", "mid"], ["        struct vertex *p = (struct vertex*) malloc(sizeof(struct vertex));", "node"], ["        p->data = a[m];", "node"], ["        p->left = create_isdp(L, m-1, a);", "recL"], ["        p->right = create_isdp(m+1, R, a);", "recR"], ["        return p;", ""], ["    }", ""], ["}", ""]];
+  const pocket = S.mountPocket({key:"isdpCodeOpen", title:"Построение ИСДП на C", desc:"Функция <code>create_isdp</code> строит дерево по отсортированному массиву. Подсвечены строки текущего шага.", foot:"<b>L, R</b> — границы отрезка, <b>m</b> — его середина (округление вверх).", code:CODE});
+
 
   const player = S.mountPlayer($('stage'), {
     legend: '<span><i class="dot" style="background:var(--ok)"></i>только что созданный узел</span><span><i class="dot" style="background:var(--ac)"></i>середина текущего отрезка</span>',
@@ -56,7 +60,8 @@
       canvas.classList.toggle('compact', !step.tree);
       canvas.innerHTML = (step.strip || '') + '<div class="tree-host"></div>';
       S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:false});
-    }
+    },
+    onStep(step){ pocket.show(step.code); }
   });
 
   function build(){
@@ -73,21 +78,23 @@
       title:'Шаг 0. Сортируем ключи',
       text:`Для ИСДП нужен отсортированный набор. Получили: <b>${keys.map(S.esc).join(' ')}</b>.${dup}<span class="l">Дальше рекурсивно выбираем середину отрезка: она становится корнем поддерева.</span>`,
       strip:S.strip(keys),
-      tree:null
+      tree:null,
+      code:['sig']
     });
 
     function buildTree(lo, hi, parent, dir, depth){
       if(lo > hi) return;
-      const mid = (lo + hi) >> 1;
+      const mid = (lo + hi + 1) >> 1;
       const n = mk(keys[mid]);
       if(parent){ if(dir < 0) parent.l = n; else parent.r = n; } else root = n;
       const where = parent ? (dir < 0 ? 'левым потомком' : 'правым потомком') : 'корнем дерева';
       steps.push({
         title:`Отрезок [${lo}..${hi}], середина — «${keys[mid]}»`,
-        text:`Индекс середины m = (${lo}+${hi}) div 2 = <b>${mid}</b>, ключ «<b>${S.esc(keys[mid])}</b>».<span class="l">Узел становится ${where}; глубина ${depth}. Слева остаётся [${lo}..${mid-1}], справа — [${mid+1}..${hi}].</span>`,
+        text:`Индекс середины m = (${lo}+${hi}+1) div 2 = <b>${mid}</b>, ключ «<b>${S.esc(keys[mid])}</b>».<span class="l">Узел становится ${where}; глубина ${depth}. Слева остаётся [${lo}..${mid-1}], справа — [${mid+1}..${hi}].</span>`,
         strip:S.strip(keys, {lo, hi, mid}),
         tree:S.clone(root),
-        newId:n.id
+        newId:n.id,
+        code:['mid','node','recL','recR']
       });
       buildTree(lo, mid - 1, n, -1, depth + 1);
       buildTree(mid + 1, hi, n, 1, depth + 1);

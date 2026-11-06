@@ -48,6 +48,7 @@
   </nav>
 </main>
 <script src="assets/core.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
@@ -55,17 +56,30 @@
   const $ = S.$;
   let root = null, seq = 0, steps = [];
   const mk = d => ({id:++seq, d, l:null, r:null});
+  const CODE = [["struct vertex{", ""], ["    int data;", ""], ["    struct vertex *left;", ""], ["    struct vertex *right;", ""], ["};", ""], ["", ""], ["void delete_vertex(int data, struct vertex **root) {", "sig"], ["    struct vertex **p = root;", "search"], ["    while (*p != NULL) {", "search"], ["        if (data < (*p)->data) p = &((*p)->left);", "search"], ["        else if (data > (*p)->data) p = &((*p)->right);", "search"], ["        else break;", "search"], ["    }", ""], ["", ""], ["    if (*p != NULL) {", "found nf"], ["        struct vertex *q = *p;", "found"], ["        if (q->left == NULL) *p = q->right;", "c1"], ["        else if (q->right == NULL) *p = q->left;", "c2"], ["", ""], ["        else {", "c3"], ["            struct vertex *r = q->left;", "c3 pred"], ["            struct vertex *s = q;", "c3 pred"], ["", "c3"], ["            if (r->right == NULL) {", "c3 pred"], ["                r->right = q->right;", "c3 link"], ["                *p = r;", "c3 link"], ["            }", "c3"], ["            else {", "c3"], ["                while (r->right != NULL) {", "c3 pred"], ["                    s = r; r = r->right;", "c3 pred"], ["                }", "c3"], ["                s->right = r->left;", "c3 link"], ["                r->left = q->left;", "c3 link"], ["                r->right = q->right;", "c3 link"], ["                *p = r;", "c3 link"], ["            }", "c3"], ["        }", "c3"], ["        free(q);", "free"], ["    }", ""], ["}", ""]];
+  const pocket = S.mountPocket({key:"sdpDelCodeOpen", title:"Удаление из СДП на C", desc:"Функция <code>delete_vertex</code>: указатель <code>p</code> на ссылку на удаляемый узел. Подсвечены строки текущего шага.", foot:"<b>q</b> — удаляемый узел, <b>r</b> — его предшественник (максимум слева), <b>s</b> — родитель <b>r</b>. В коде предшественник перевешивается на место <b>q</b>, на схеме для наглядности копируется его ключ — дерево получается одно и то же.", code:CODE});
+
 
   const player = S.mountPlayer($('stage'), {
     legend: '<span><i class="dot" style="background:var(--bad)"></i>удаляемый узел</span><span><i class="dot" style="background:var(--ac)"></i>путь поиска / предшественник</span><span><i class="dot" style="background:var(--ok)"></i>перенесённое значение</span>',
     render(canvas, step){
       canvas.innerHTML = '<div class="tree-host"></div>';
       S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:false});
-    }
+    },
+    onStep(step){ pocket.show(step.code); }
   });
 
+  function delTags(t){
+    if(/не найден/.test(t)) return ['search', 'nf'];
+    if(/узел найден/.test(t)) return ['search', 'found'];
+    if(/^Случай 1/.test(t)) return ['c1', 'free'];
+    if(/^Случай 2/.test(t)) return ['c1', 'c2', 'free'];
+    if(/^Случай 3|^Копируем/.test(t)) return ['c3', 'pred'];
+    if(/^Удаляем прежний/.test(t)) return ['c3', 'link', 'free'];
+    return [];
+  }
   function snap(title, text, extra){
-    steps.push(Object.assign({title, text, tree:S.clone(root)}, extra || {}));
+    steps.push(Object.assign({title, text, tree:S.clone(root), code:delTags(title)}, extra || {}));
   }
 
   function parseDeletes(raw){

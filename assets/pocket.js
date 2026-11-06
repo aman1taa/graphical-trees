@@ -32,9 +32,21 @@
       </div>`;
     document.body.appendChild(pocket);
     const pre = pocket.querySelector('.code'), scroll = pocket.querySelector('.pocket-scroll'), tab = pocket.querySelector('.pocket-tab');
-    pre.innerHTML = cfg.code.map((l, i) =>
-      `<span class="ln" data-t=" ${l[1]} "><span class="no">${i + 1}</span>${paint(l[0])}\n</span>`).join('');
-    const lines = Array.from(pre.children);
+    let lines = [];
+    function setCode(code, o){
+      if(!code){ pocket.style.display = 'none'; document.body.classList.remove('pocket-open'); return; }
+      pocket.style.display = '';
+      o = o || {};
+      if(o.title) pocket.querySelector('.pocket-head h2').innerHTML = o.title;
+      if(o.desc !== undefined) pocket.querySelector('.pocket-head p').innerHTML = o.desc;
+      if(o.foot !== undefined) pocket.querySelector('.pocket-foot').innerHTML = o.foot;
+      pre.innerHTML = code.map((l, i) =>
+        `<span class="ln" data-t=" ${l[1]} "><span class="no">${i + 1}</span>${paint(l[0])}\n</span>`).join('');
+      lines = Array.from(pre.children);
+      scroll.scrollTop = 0;
+      document.body.classList.toggle('pocket-open', pocket.classList.contains('open'));
+    }
+    setCode(cfg.code);
     const hit = (el, set) => el.dataset.t.trim().split(' ').some(t => t && set.has(t));
     ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(ev => pre.addEventListener(ev, e => e.preventDefault()));
 
@@ -55,7 +67,7 @@
     }
     function setOpen(v){
       pocket.classList.toggle('open', v);
-      document.body.classList.toggle('pocket-open', v);
+      document.body.classList.toggle('pocket-open', v && pocket.style.display !== 'none');
       tab.setAttribute('aria-expanded', String(v));
       tab.title = v ? 'Скрыть код' : 'Показать код';
       try{ localStorage.setItem(cfg.key || 'codeOpen', v ? '1' : '0'); }catch(e){}
@@ -64,6 +76,6 @@
     pocket.querySelector('.pocket-x').onclick = () => setOpen(false);
     document.addEventListener('keydown', e => { if(e.key === 'Escape') setOpen(false); });
     try{ if(localStorage.getItem(cfg.key || 'codeOpen') === '1') setOpen(true); }catch(e){}
-    return {show, setOpen};
+    return {show, setOpen, setCode};
   };
 })();

@@ -42,6 +42,7 @@
   </nav>
 </main>
 <script src="assets/core.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
@@ -49,6 +50,9 @@
   const $ = S.$;
   let root = null, seq = 0;
   const mk = d => ({id:++seq, d, l:null, r:null});
+  const CODE = [["struct vertex{", ""], ["    int data;", ""], ["    struct vertex *left;", ""], ["    struct vertex *right;", ""], ["};", ""], ["", ""], ["struct vertex* add_rec(struct vertex *root, int data){", "sig"], ["    if (root == NULL){", "null"], ["        root = malloc(sizeof(struct vertex));", "new"], ["        root->data = data;", "new"], ["        root->left = root->right = NULL;", "new"], ["    }", ""], ["    else if (data < root->data)", "cmpL"], ["    root->left = add_rec(root->left, data);", "recL"], ["    else if (data > root->data)", "cmpR"], ["    root->right = add_rec(root->right, data);", "recR"], ["    return root;", "ret"], ["}", ""]];
+  const pocket = S.mountPocket({key:"sdpCodeOpen", title:"Вставка в СДП на C", desc:"Рекурсивная функция <code>add_rec</code>. Подсвечены строки текущего шага.", foot:"Одинаковый ключ не попадает ни в одну ветку — дерево не меняется.", code:CODE});
+
 
   const player = S.mountPlayer($('stage'), {
     legend: '<span><i class="dot" style="background:var(--ok)"></i>новый узел</span><span><i class="dot" style="background:var(--ac)"></i>пройденные узлы (путь сравнений)</span>',
@@ -56,7 +60,8 @@
       canvas.classList.toggle('compact', !step.tree);
       canvas.innerHTML = (step.strip || '') + '<div class="tree-host"></div>';
       S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:false});
-    }
+    },
+    onStep(step){ pocket.show(step.code); }
   });
 
   function build(){
@@ -72,7 +77,8 @@
       title:'Пустое дерево',
       text:`Будем вставлять ключи в порядке: <b>${keys.map(S.esc).join(' → ')}</b>.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Каждый новый ключ спускается от корня: меньше текущего — влево, больше — вправо, пока не найдёт свободное место.</span>`,
       strip:S.strip(keys),
-      tree:null
+      tree:null,
+      code:['sig']
     });
 
     let inserts = 0;
@@ -85,16 +91,16 @@
           text:`Дерево пустое — «<b>${S.esc(ch)}</b>» становится корнем.<span class="l">Глубина узла 0.</span>`,
           strip:S.strip(keys),
           tree:S.clone(root),
-          newId:root.id
+          newId:root.id, code:['null','new']
         });
         continue;
       }
-      let t = root, path = [], cmp = [], duplicate = false;
+      let t = root, path = [], cmp = [], duplicate = false, tg = [];
       while(true){
         if(ch === t.d){ duplicate = true; break; }
         const dir = ch < t.d ? -1 : 1;
         cmp.push(`${S.esc(ch)} ${dir < 0 ? '&lt;' : '&gt;'} ${S.esc(t.d)} → ${dir < 0 ? 'влево' : 'вправо'}`);
-        path.push(t.id);
+        path.push(t.id); tg.push(dir < 0 ? 'cmpL' : 'cmpR', dir < 0 ? 'recL' : 'recR');
         const next = dir < 0 ? t.l : t.r;
         if(!next) break;
         t = next;
@@ -105,7 +111,7 @@
           text:`Ключ «<b>${S.esc(ch)}</b>» найден на пути вставки — дубликаты в дерево поиска не добавляем.<span class="l">Повторная вставка ничего не меняет.</span>`,
           strip:S.strip(keys),
           tree:S.clone(root),
-          path
+          path, code:[...tg, 'ret']
         });
         continue;
       }
@@ -119,7 +125,7 @@
         strip:S.strip(keys),
         tree:S.clone(root),
         newId:n.id,
-        path
+        path, code:[...tg, 'null', 'new']
       });
     }
 

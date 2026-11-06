@@ -75,6 +75,7 @@ return lo;</pre>
 </main>
 <script src="assets/core.js"></script>
 <script src="assets/algo.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
@@ -82,20 +83,32 @@ return lo;</pre>
   const $ = S.$;
   let type = '1';
   let steps = [];
+  const CODE1 = [["int c1;", ""], ["", ""], ["int dvp1(int a[], int x, int n){", "init"], ["    int l = 0;", "init"], ["    int r = n-1;", "init"], ["    int m;", "init"], ["    int c = 0;", "init"], ["    while (l<=r) {", "loop"], ["", ""], ["        m = (l+r)/2;", "mid"], ["        c++;", ""], ["        if (a[m] == x) { c1 = c; return m;}", "eq found"], ["        c++;", ""], ["        if (a[m] < x) { l = m + 1;}", "lt narrow"], ["        else r = m-1;", "narrow"], ["    }", ""], ["    return -1;", "nf"], ["}", ""]], CODE2 = [["int dvp2(int a[], int x, int n){", "init"], ["    int l = 0;", "init"], ["    int r = n;", "init"], ["    int m;", "init"], ["    int c = 0;", "init"], ["    while (l<r) {", "loop"], ["        c++;", ""], ["        m = l+(r-l)/2;", "mid"], ["        if (a[m] < x) l = m + 1;", "lt narrow"], ["        else r = m;", "narrow"], ["    }", ""], ["    c++;", ""], ["    if (a[r] == x) {c1 = c; return m;}", "end"], ["    else return -1;", "end"], ["}", ""]];
+  const pocket = S.mountPocket({key:'bsCodeOpen', title:'Бинарный поиск на C', desc:'Подсвечены строки текущего шага. <code>c</code> — счётчик сравнений.', code:CODE1});
+  function bsTags(t){
+    if(/^Тип/.test(t)) return ['init'];
+    if(/^Сравнение/.test(t)) return ['loop', 'mid', 'eq', 'lt'];
+    if(/^Сужаем|^Новая/.test(t)) return ['narrow'];
+    if(/^Найдено/.test(t)) return ['eq', 'found'];
+    if(/не найден/.test(t)) return ['nf'];
+    if(/^Позиция вставки/.test(t)) return ['end'];
+    return [];
+  }
 
   const player = S.mountPlayer($('stage'), {
     autoplay: 1200,
     render(canvas, step){
       canvas.classList.add('compact');
       canvas.innerHTML = step.strip || '';
-    }
+    },
+    onStep(step){ pocket.show(step.code); }
   });
 
   function rec(title, text, o){
     o = o || {};
     const items = (o.arr || []).map((ch, i) => ({k:ch, w:i}));
     steps.push({
-      title, text,
+      title, text, code: bsTags(title),
       strip: S.strip(items, {lo:o.lo, hi:o.hi, mid:o.mid, done:o.done, cls:'large'})
     });
   }
@@ -120,6 +133,7 @@ return lo;</pre>
   }
 
   function buildType1(arr, target, note){
+    pocket.setCode(CODE1, {title:'Тип 1: dvp1 — точное вхождение'});
     let lo = 0, hi = arr.length - 1, C = 0, found = -1;
     rec('Тип 1: точное вхождение', `Ищем символ «<b>${S.esc(target)}</b>» в массиве из ${arr.length} элементов. Диапазон поиска — <b>[${lo}…${hi}]</b>.${note}<span class="l">Сравниваем искомый символ со средним элементом диапазона и отбрасываем ту половину, где его точно нет.</span>`, {arr, lo, hi, mid:Math.floor((lo + hi) / 2)});
 
@@ -146,6 +160,7 @@ return lo;</pre>
   }
 
   function buildType2(arr, target, note){
+    pocket.setCode(CODE2, {title:'Тип 2: dvp2 — позиция вставки'});
     let lo = 0, hi = arr.length, C = 0;
     rec('Тип 2: позиция вставки (lower bound)', `Ищем первое место, где элемент <b>≥ «${S.esc(target)}»</b>. Диапазон-кандидат — <b>[${lo}…${hi})</b>, правая граница не включается.${note}<span class="l">Если средний элемент меньше искомого, ответ точно правее него; иначе средний элемент ещё может оказаться ответом.</span>`, {arr, lo, hi:hi - 1, mid:Math.floor((lo + hi) / 2)});
 

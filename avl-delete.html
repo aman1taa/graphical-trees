@@ -49,6 +49,7 @@
   </nav>
 </main>
 <script src="assets/core.js"></script>
+<script src="assets/pocket.js"></script>
 <script>
 (function(){
   'use strict';
@@ -56,6 +57,9 @@
   const $ = S.$;
   let root = null, seq = 0, steps = [], totalRot = 0;
   const mk = d => ({id:++seq, d, b:0, l:null, r:null});
+  const CODE = [["struct vertex{", ""], ["    int data;", ""], ["    int bal;", ""], ["    struct vertex *left;", ""], ["    struct vertex *right;", ""], ["};", ""], ["", ""], ["int decrease = 0;", ""], ["struct vertex *q;", ""], ["", ""], ["/* LL, LR, RR, RL — повороты из add_avl */", ""], ["", ""], ["void BL(struct vertex **p){", ""], ["    if ((*p)->bal == -1) (*p)->bal = 0;", ""], ["    else if ((*p)->bal == 0) {(*p)->bal = 1; decrease = 0;}", ""], ["    else if ((*p)->bal == 1) {", "BLrot"], ["        if ((*p)->right->bal >= 0) {", "BLrot"], ["            struct vertex *q = (*p)->right;", "BLrot"], ["            if(q->bal == 0) {q->bal = -1; (*p)->bal = 1; decrease = 0;}", "BLrot"], ["            else {q->bal = 0; (*p)->bal = 0;}", "BLrot"], ["", "BLrot"], ["            (*p)->right = q->left;", "BLrot"], ["            q->left = *p;", "BLrot"], ["            *p = q;", "BLrot"], ["        }", "BLrot"], ["        else *p = RL(*p);", "BLrot"], ["    }", ""], ["}", ""], ["", ""], ["void BR(struct vertex **p){", ""], ["    if ((*p)->bal == 1) (*p)->bal = 0;", ""], ["    else if ((*p)->bal == 0) {(*p)->bal = -1; decrease = 0;}", ""], ["    else if ((*p)->bal == -1) {", "BRrot"], ["        if ((*p)->left->bal <= 0) {", "BRrot"], ["            struct vertex *q = (*p)->left;", "BRrot"], ["            if(q->bal == 0) {q->bal = 1; (*p)->bal = -1; decrease = 0;}", "BRrot"], ["            else {q->bal = 0; (*p)->bal = 0;}", "BRrot"], ["", "BRrot"], ["            (*p)->left = q->right;", "BRrot"], ["            q->right = *p;", "BRrot"], ["            *p = q;", "BRrot"], ["        }", "BRrot"], ["        else *p = LR(*p);", "BRrot"], ["    }", ""], ["}", ""], ["", ""], ["void del(struct vertex **r) {", ""], ["    if ((*r)->right != NULL){", "pred"], ["        del(&(*r)->right);", "pred"], ["        if (decrease == 1) BR(r);", ""], ["    }", ""], ["    else {", ""], ["        q->data = (*r)->data;", "copy"], ["        q = (*r);", ""], ["        *r = (*r)->left;", "link"], ["        decrease = 1;", ""], ["    }", ""], ["}", ""], ["", ""], ["void deleteavl(int x, struct vertex **p){", ""], ["    if (*p == NULL);", "nf"], ["    else if (x < (*p)->data) {", "search"], ["        deleteavl(x, &(*p)->left);", "search"], ["        if (decrease == 1) BL(p);", ""], ["    }", ""], ["    else if (x > (*p)->data) {", "search"], ["        deleteavl(x, &(*p)->right);", "search"], ["        if (decrease == 1) BR(p);", ""], ["    }", ""], ["", ""], ["    else {", ""], ["        q = *p;", "found"], ["        if (q->left == NULL) {*p = q->right; decrease = 1;}", "c12"], ["        else if (q->right == NULL) {*p = q->left; decrease = 1;}", "c12"], ["        else {", ""], ["            del(&q->left);", "c3"], ["            if (decrease == 1) BL(p);", "c3"], ["        }", ""], ["        free(q);", "free"], ["    }", ""], ["}", ""]];
+  const pocket = S.mountPocket({key:"avlDelCodeOpen", title:"Удаление из АВЛ-дерева на C", desc:"Функции <code>deleteavl</code>, <code>del</code>, <code>BL</code> и <code>BR</code>. Подсвечены строки текущего шага.", foot:"<b>decrease</b> = 1, пока высота поддерева уменьшилась и выше нужно проверить балансы. <b>BL</b> вызывается после удаления слева, <b>BR</b> — справа.", code:CODE});
+
 
   const player = S.mountPlayer($('stage'), {
     legend: '<span><i class="dot" style="background:var(--bad)"></i>удаляемый узел / нарушение</span><span><i class="dot" style="background:var(--ok)"></i>перенесённое значение</span><span><i class="dot" style="background:var(--ac)"></i>участники поворота (P, Q, R)</span>',
@@ -64,6 +68,7 @@
       S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:true});
     },
     onStep(step){
+      pocket.show(step.code);
       ['LL', 'RR', 'LR', 'RL'].forEach(k => {
         const el = $('c-' + k);
         if(el) el.classList.toggle('on', step.rot === k);
@@ -71,8 +76,18 @@
     }
   });
 
+  function delTags(t, x){
+    if(/не найден/.test(t)) return ['nf'];
+    if(/узел найден/.test(t)) return ['search', 'found'];
+    if(/^Случай 3/.test(t)) return ['c3'];
+    if(/^Копируем/.test(t)) return ['copy'];
+    if(/^Удалён прежний/.test(t)) return ['link'];
+    if(/: (один потомок|лист)$/.test(t)) return ['c12', 'free'];
+    if(x && x.rot) return [/RR|RL/.test(x.rot) ? 'BLrot' : 'BRrot'];
+    return [];
+  }
   function snap(title, text, extra){
-    steps.push(Object.assign({title, text, tree:S.clone(root)}, extra || {}));
+    steps.push(Object.assign({title, text, tree:S.clone(root), code:delTags(title, extra)}, extra || {}));
   }
 
   function rotate(a, kind){

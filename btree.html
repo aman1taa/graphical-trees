@@ -33,8 +33,8 @@
   <details>
     <summary>Как работает вставка в ДБД</summary>
     <ul>
-      <li>Ключ спускается как в обычном дереве поиска и добавляется листом по вертикальной связи (<code>vr = 1</code>).</li>
-      <li>При подъёме смотрим флаги <code>vr</code> и <code>hr</code>. Вертикальная связь справа превращается в горизонтальную, а слева — поворачивается в страницу из двух ключей.</li>
+      <li>Ключ спускается как в обычном дереве поиска и добавляется листом по вертикальной связи (<code>VR = 1</code>).</li>
+      <li>При подъёме смотрим флаги <code>VR</code> и <code>HR</code>. Вертикальная связь справа превращается в горизонтальную, а слева — поворачивается в страницу из двух ключей.</li>
       <li>Если в странице оказалось три ключа, средний поднимается на уровень выше — это расщепление страницы.</li>
       <li>Все страницы-листья остаются на одном уровне, поэтому высота растёт только через корень.</li>
     </ul>
@@ -51,79 +51,15 @@
 (function(){
   'use strict';
   const S = window.TreeSite, $ = S.$, esc = S.esc;
-  let root = null, seq = 0, steps = [], VR = 1, HR = 1;
+  let root = null, seq = 0, steps = [], VR = 0, HR = 0;
   const mk = d => ({id:++seq, d, b:0, l:null, r:null});
 
-  const CODE = [
-    ['struct vertex {', ''],
-    ['    int data;', ''],
-    ['    int bal;              /* 0 — правая связь вертикальная, 1 — горизонтальная */', ''],
-    ['    struct vertex *left, *right;', ''],
-    ['};', ''],
-    ['', ''],
-    ['int vr = 1, hr = 1;', 'glob'],
-    ['', ''],
-    ['struct vertex* b2insert(int data, struct vertex *p) {', 'sig'],
-    ['    struct vertex *q;', 'sig'],
-    ['    if (!p) {', 'null'],
-    ['        p = malloc(sizeof(struct vertex));', 'new'],
-    ['        p->data = data;', 'new'],
-    ['        p->left = NULL;', 'new'],
-    ['        p->right = NULL;', 'new'],
-    ['        p->bal = 0;', 'new'],
-    ['        vr = 1;', 'new'],
-    ['    }', ''],
-    ['', ''],
-    ['    else if (p->data > data) {', 'cmpL'],
-    ['        p->left = b2insert(data, p->left);', 'recL'],
-    ['        if (vr == 1) {', 'chkL'],
-    ['            if (p->bal == 0) {', 'Lbal0'],
-    ['                q = p->left;', 'LL'],
-    ['                p->left = q->right;', 'LL'],
-    ['                q->right = p;', 'LL'],
-    ['                p = q;', 'LL'],
-    ['                q->bal = 1;', 'LL'],
-    ['                vr = 0;', 'LL'],
-    ['                hr = 1;', 'LL'],
-    ['            }', ''],
-    ['            else {', 'Lsplit'],
-    ['                p->bal = 0;', 'Lsplit'],
-    ['                vr = 1;', 'Lsplit'],
-    ['                hr = 0;', 'Lsplit'],
-    ['            }', ''],
-    ['        }', ''],
-    ['        else hr = 0;', 'Lnone'],
-    ['    }', ''],
-    ['', ''],
-    ['    else if (p->data < data) {', 'cmpR'],
-    ['        p->right = b2insert(data, p->right);', 'recR'],
-    ['        if (vr == 1) {', 'chkR'],
-    ['            p->bal = 1;', 'Rlink'],
-    ['            hr = 1;', 'Rlink'],
-    ['            vr = 0;', 'Rlink'],
-    ['        }', ''],
-    ['        else if (hr == 1) {', 'Rchk'],
-    ['            if (p->bal == 1) {', 'Rbal1'],
-    ['                q = p->right;', 'Rrot'],
-    ['                p->bal = 0;', 'Rrot'],
-    ['                q->bal = 0;', 'Rrot'],
-    ['                p->right = q->left;', 'Rrot'],
-    ['                q->left = p;', 'Rrot'],
-    ['                p = q;', 'Rrot'],
-    ['                vr = 1;', 'Rrot'],
-    ['                hr = 0;', 'Rrot'],
-    ['            }', ''],
-    ['            else hr = 0;', 'Rnone'],
-    ['        }', ''],
-    ['    }', ''],
-    ['    return p;', 'ret'],
-    ['}', '']
-  ];
+  const CODE = [["struct vertex{", ""], ["    int data;", ""], ["    int bal;", ""], ["    struct vertex *left;", ""], ["    struct vertex *right;", ""], ["};", ""], ["", ""], ["int VR = 0;", "glob"], ["int HR = 0;", "glob"], ["", ""], ["void B2INSERT(int D, struct vertex **p) {", "sig"], ["    struct vertex *q;", "sig"], ["", ""], ["    if (*p == NULL) {", "null"], ["        *p = malloc(sizeof(struct vertex));", "new"], ["        (*p)->data = D;", "new"], ["        (*p)->left = (*p)->right = NULL;", "new"], ["        (*p)->bal = 0;", "new"], ["        VR = 1;", "new"], ["    }", ""], ["    else if ((*p)->data > D) {", "cmpL"], ["        B2INSERT(D, &((*p)->left));", "recL"], ["        if (VR == 1) {", "chkL"], ["            if ((*p)->bal == 0) {", "Lbal0"], ["                q = (*p)->left;", "LL"], ["                (*p)->left = q->right;", "LL"], ["                q->right = *p;", "LL"], ["                *p = q;", "LL"], ["                q->bal = 1;", "LL"], ["                VR = 0;", "LL"], ["                HR = 1;", "LL"], ["            } else {", "Lsplit"], ["                (*p)->bal = 0;", "Lsplit"], ["                VR = 1;", "Lsplit"], ["                HR = 0;", "Lsplit"], ["            }", ""], ["        } else {", "Lnone"], ["            HR = 0;", "Lnone"], ["        }", ""], ["    }", ""], ["    else if ((*p)->data < D) {", "cmpR"], ["        B2INSERT(D, &((*p)->right));", "recR"], ["        if (VR == 1) {", "chkR"], ["            (*p)->bal = 1;", "Rlink"], ["            HR = 1;", "Rlink"], ["            VR = 0;", "Rlink"], ["        }", ""], ["        else if (HR == 1) {", "Rchk"], ["            if ((*p)->bal == 1) {", "Rbal1"], ["                q = (*p)->right;", "Rrot"], ["                (*p)->bal = 0;", "Rrot"], ["                q->bal = 0;", "Rrot"], ["                (*p)->right = q->left;", "Rrot"], ["                q->left = *p;", "Rrot"], ["                *p = q;", "Rrot"], ["                VR = 1;", "Rrot"], ["                HR = 0;", "Rrot"], ["            } else {", "Rnone"], ["                HR = 0;", "Rnone"], ["            }", ""], ["        }", ""], ["    }", ""], ["    else {", ""], ["        VR = 0;", ""], ["        HR = 0;", ""], ["    }", ""], ["}", ""]];
   const pocket = S.mountPocket({
     key:'dbdCodeOpen',
     title:'Вставка в ДБД на C',
-    desc:'Функция <code>b2insert</code>: вертикальные и горизонтальные связи управляются флагами <code>vr</code> и <code>hr</code>. Подсвечены строки текущего шага.',
-    foot:'<b>p, q</b> — это P, Q на схеме. <b>bal</b> = 1, если правая связь горизонтальная; <b>vr</b> = 1, пока вершина поднялась по вертикали; <b>hr</b> = 1, пока сверху страница с горизонтальной связью.',
+    desc:'Функция <code>B2INSERT</code>: вертикальные и горизонтальные связи управляются флагами <code>VR</code> и <code>HR</code>. Подсвечены строки текущего шага.',
+    foot:'<b>p, q</b> — это P, Q на схеме. <b>bal</b> = 1, если правая связь горизонтальная; <b>VR</b> = 1, пока вершина поднялась по вертикали; <b>HR</b> = 1, пока сверху страница с горизонтальной связью.',
     code:CODE
   });
 
@@ -194,7 +130,7 @@
       if(!p){
         p = mk(D); set(p); VR = 1;
         snap(`Вставка «${D}»: новая вершина`,
-          `Спуск: ${cmp.join('; ') || 'дерево пусто'}.<br>Место найдено — создаём «<b>${esc(D)}</b>», bal = 0, vr = 1.<span class="l">Связь с родителем пока вертикальная. Теперь поднимаемся к корню и смотрим флаги vr и hr.</span>`,
+          `Спуск: ${cmp.join('; ') || 'дерево пусто'}.<br>Место найдено — создаём «<b>${esc(D)}</b>», bal = 0, VR = 1.<span class="l">Связь с родителем пока вертикальная. Теперь поднимаемся к корню и смотрим флаги VR и HR.</span>`,
           {newId:p.id, code:[...ct, 'null', 'new']});
         return;
       }
@@ -209,30 +145,30 @@
             const q = p.l, Q = esc(q.d);
             p.l = q.r; q.r = p; q.b = 1; set(q); VR = 0; HR = 1;
             snap(`Слева от «${p.d}»: поворот в страницу из двух ключей`,
-              `Вершина Q=«${Q}» поднялась слева, у P=«${P}» правая связь вертикальная (bal = 0). Q встаёт на место P, а P становится её правым потомком по <b>горизонтальной</b> связи; bal(Q) = 1.<span class="l">Теперь vr = 0, hr = 1: сверху видна страница из двух ключей.</span>${flush()}`,
+              `Вершина Q=«${Q}» поднялась слева, у P=«${P}» правая связь вертикальная (bal = 0). Q встаёт на место P, а P становится её правым потомком по <b>горизонтальной</b> связи; bal(Q) = 1.<span class="l">Теперь VR = 0, HR = 1: сверху видна страница из двух ключей.</span>${flush()}`,
               {tags:{[q.id]:'Q', [p.id]:'P'}, code:['recL', 'chkL', 'Lbal0', 'LL']});
           } else {
             p.b = 0; VR = 1; HR = 0;
             snap(`Слева от «${p.d}»: расщепление страницы`,
-              `У P=«${P}» уже горизонтальная связь (bal = 1): в странице два ключа, слева добавился третий.<span class="l">P становится средним: bal(P) = 0, обе связи вертикальные, vr = 1 — P поднимается на уровень выше, hr = 0.</span>${flush()}`,
+              `У P=«${P}» уже горизонтальная связь (bal = 1): в странице два ключа, слева добавился третий.<span class="l">P становится средним: bal(P) = 0, обе связи вертикальные, VR = 1 — P поднимается на уровень выше, HR = 0.</span>${flush()}`,
               {tags:{[p.id]:'P'}, code:['recL', 'chkL', 'Lbal0', 'Lsplit']});
           }
-        } else { HR = 0; log.push(`«${P}»: слева vr = 0, ставим hr = 0.`); }
+        } else { HR = 0; log.push(`«${P}»: слева VR = 0, ставим HR = 0.`); }
       } else {
         if(VR === 1){
           p.b = 1; HR = 1; VR = 0;
           snap(`Справа от «${p.d}»: связь становится горизонтальной`,
-            `Справа поднялась вершина, значит bal(P) = 1: «${P}» и правый потомок теперь лежат в одной странице. vr = 0, hr = 1.${flush()}`,
+            `Справа поднялась вершина, значит bal(P) = 1: «${P}» и правый потомок теперь лежат в одной странице. VR = 0, HR = 1.${flush()}`,
             {tags:{[p.id]:'P'}, code:['recR', 'chkR', 'Rlink']});
         } else if(HR === 1){
           if(p.b === 1){
             const q = p.r, Q = esc(q.d);
             p.b = 0; q.b = 0; p.r = q.l; q.l = p; set(q); VR = 1; HR = 0;
             snap(`Справа от «${p.d}»: три ключа подряд — поворот`,
-              `P=«${P}» связана горизонтально с Q=«${Q}», а у Q тоже горизонтальная связь вправо: в странице три ключа.<span class="l">Q (средний) поднимается, P становится его левым потомком; bal(P) = bal(Q) = 0, vr = 1, hr = 0.</span>${flush()}`,
+              `P=«${P}» связана горизонтально с Q=«${Q}», а у Q тоже горизонтальная связь вправо: в странице три ключа.<span class="l">Q (средний) поднимается, P становится его левым потомком; bal(P) = bal(Q) = 0, VR = 1, HR = 0.</span>${flush()}`,
               {tags:{[q.id]:'Q', [p.id]:'P'}, code:['recR', 'chkR', 'Rchk', 'Rbal1', 'Rrot']});
-          } else { HR = 0; log.push(`«${P}»: справа hr = 1, но bal = 0 — страница из двух ключей на месте, hr = 0.`); }
-        } else log.push(`«${P}»: vr = 0, hr = 0 — изменений нет.`);
+          } else { HR = 0; log.push(`«${P}»: справа HR = 1, но bal = 0 — страница из двух ключей на месте, HR = 0.`); }
+        } else log.push(`«${P}»: VR = 0, HR = 0 — изменений нет.`);
       }
     }
     ins(root, n => { root = n; });
@@ -247,13 +183,13 @@
 
   function build(){
     const parsed = S.parseKeys($('inp').value, 20), keys = parsed.keys;
-    seq = 0; root = null; steps = []; VR = 1; HR = 1;
+    seq = 0; root = null; steps = []; VR = 0; HR = 0;
     if(!keys.length){
       player.setSteps([{title:'Пусто', text:'Введите хотя бы одну букву.', tree:null, code:[]}]);
       return;
     }
     snap('Пустое ДБД',
-      `Вставляем ключи в порядке <b>${keys.map(esc).join(' → ')}</b>.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Сначала vr = 1 и hr = 1. Каждая вставка спускается как в дереве поиска, а при подъёме флаги vr и hr решают, что делать со связями.</span>`,
+      `Вставляем ключи в порядке <b>${keys.map(esc).join(' → ')}</b>.${parsed.dups ? ` Повторов отброшено: ${parsed.dups}.` : ''}<span class="l">Сначала VR = 0 и HR = 0. Каждая вставка спускается как в дереве поиска, а при подъёме флаги VR и HR решают, что делать со связями.</span>`,
       {code:['glob']});
     keys.forEach(insert);
     const st = stats();
