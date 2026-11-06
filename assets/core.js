@@ -387,44 +387,22 @@
   /* ---------- Мини-тест (викторина с самопроверкой) ---------- */
   TS.mountQuiz = function(el, cfg){
     cfg = cfg || {};
-    const qs = cfg.questions || [];
-    let html = '<div class="quiz">'
-      + '<h2>' + (cfg.title || 'Проверь себя') + '</h2>'
-      + (cfg.intro ? '<p class="quiz-intro">' + cfg.intro + '</p>' : '')
-      + '<div class="quiz-form">';
-    qs.forEach((q, i) => {
-      html += '<fieldset class="q" data-ans="' + q.answer + '">'
-        + '<legend><span class="qn">' + (i + 1) + '.</span> ' + q.q + '</legend>';
-      q.options.forEach((opt, j) => {
-        html += '<label class="opt"><input type="radio" name="qq' + i + '" value="' + j + '"><span>' + opt + '</span></label>';
-      });
-      html += '<div class="explain" hidden><span class="why">' + (q.why || '') + '</span></div></fieldset>';
-    });
-    html += '</div>'
-      + '<div class="quiz-actions"><button type="button" class="p" data-act="check">Проверить</button>'
-      + '<button type="button" data-act="reset">Сбросить</button>'
-      + '<span class="score" hidden></span></div></div>';
-    el.innerHTML = html;
+    const pool = cfg.questions || [];
+    const per = Math.max(1, Math.min(cfg.per || 4, pool.length));
+    let questions = [];
 
-    const root = el.querySelector('.quiz');
-    const checkBtn = root.querySelector('[data-act="check"]');
-    const resetBtn = root.querySelector('[data-act="reset"]');
-    const scoreEl = root.querySelector('.score');
-    const fieldsets = Array.from(root.querySelectorAll('fieldset.q'));
-
-    function reset(){
-      fieldsets.forEach(fs => {
-        fs.querySelectorAll('input').forEach(inp => { inp.checked = false; inp.disabled = false; });
-        fs.querySelectorAll('.opt').forEach(o => o.classList.remove('ok', 'bad'));
-        const ex = fs.querySelector('.explain');
-        ex.hidden = true; ex.classList.remove('ok', 'bad');
-      });
-      scoreEl.hidden = true;
-      checkBtn.disabled = false;
+    function pick(){
+      const idx = pool.map((_, i) => i);
+      for(let i = idx.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [idx[i], idx[j]] = [idx[j], idx[i]];
+      }
+      questions = idx.slice(0, per).map(i => pool[i]);
     }
 
-    checkBtn.addEventListener('click', () => {
+    function check(){
       let correct = 0;
+      const fieldsets = Array.from(el.querySelectorAll('fieldset.q'));
       fieldsets.forEach(fs => {
         const ans = +fs.dataset.ans;
         const sel = fs.querySelector('input:checked');
@@ -444,12 +422,40 @@
         ex.classList.toggle('bad', !isRight);
         ex.innerHTML = '<b>' + (isRight ? 'Верно.' : 'Неверно.') + '</b> ' + why;
       });
+      const scoreEl = el.querySelector('.score');
       scoreEl.hidden = false;
       scoreEl.textContent = 'Верно: ' + correct + ' из ' + fieldsets.length;
-      checkBtn.disabled = true;
-    });
+      el.querySelector('[data-act="check"]').disabled = true;
+    }
 
-    resetBtn.addEventListener('click', reset);
+    function render(){
+      pick();
+      const note = pool.length > per
+        ? `<p class="quiz-intro" style="margin-top:-10px">Показываются <b>${per}</b> случайных из ${pool.length} вопросов — нажмите «Другие вопросы», чтобы получить новый набор.</p>`
+        : '';
+      let html = '<div class="quiz">'
+        + '<h2>' + (cfg.title || 'Проверь себя') + '</h2>'
+        + (cfg.intro ? '<p class="quiz-intro">' + cfg.intro + '</p>' : '')
+        + note
+        + '<div class="quiz-form">';
+      questions.forEach((q, i) => {
+        html += '<fieldset class="q" data-ans="' + q.answer + '">'
+          + '<legend><span class="qn">' + (i + 1) + '.</span> ' + q.q + '</legend>';
+        q.options.forEach((opt, j) => {
+          html += '<label class="opt"><input type="radio" name="qq' + i + '" value="' + j + '"><span>' + opt + '</span></label>';
+        });
+        html += '<div class="explain" hidden><span class="why">' + (q.why || '') + '</span></div></fieldset>';
+      });
+      html += '</div>'
+        + '<div class="quiz-actions"><button type="button" class="p" data-act="check">Проверить</button>'
+        + '<button type="button" data-act="reset">Другие вопросы</button>'
+        + '<span class="score" hidden></span></div></div>';
+      el.innerHTML = html;
+      el.querySelector('[data-act="check"]').addEventListener('click', check);
+      el.querySelector('[data-act="reset"]').addEventListener('click', render);
+    }
+
+    render();
   };
 
 })();
