@@ -29,6 +29,13 @@
         <label for="size">Размер таблицы m</label>
         <input id="size" type="number" min="3" max="15" step="1" value="11">
       </div>
+      <div class="field" style="flex:0 1 210px">
+        <label for="probe">Тип проб (открытая адресация)</label>
+        <select id="probe">
+          <option value="linear" selected>Линейные: (h + i) mod m</option>
+          <option value="quad">Квадратичные: (h + i²) mod m</option>
+        </select>
+      </div>
       <button class="p" id="go" type="button">Построить</button>
     </div>
     <div class="meta" style="margin-top:9px">До 20 ключей. Повторяющиеся символы добавляются как отдельные записи — так видны коллизии.</div>
@@ -50,8 +57,8 @@
 
   <details>
     <summary>Метод открытой адресации</summary>
-    <p>Все ключи хранятся в самой таблице. Если ячейка <code>h</code> занята, проверяем следующую по кругу: <code>(h + 1) mod m</code>, затем <code>(h + 2) mod m</code> и так далее. Это линейное опробование.</p>
-    <p>Коэффициент заполнения не может превышать 1. Чем ближе <code>α</code> к 1, тем длиннее становится поиск; при <code>α = 1</code> свободных ячеек нет. Линейное опробование образует кластеры — подряд идущие занятые ячейки, из-за которых средняя длина пробы растёт. Удаление требует особой пометки «удалено», иначе цепочка поиска разорвётся.</p>
+    <p>Все ключи хранятся в самой таблице. Если ячейка <code>h</code> занята, пробуем другие ячейки. При <b>линейных пробах</b> — подряд: <code>(h + 1) mod m</code>, <code>(h + 2) mod m</code> и так далее. При <b>квадратичных пробах</b> — с растущим шагом: <code>(h + 1²) mod m</code>, <code>(h + 2²) mod m</code>, <code>(h + 3²) mod m</code> и так далее.</p>
+    <p>Коэффициент заполнения не может превышать 1. Чем ближе <code>α</code> к 1, тем длиннее становится поиск; при <code>α = 1</code> свободных ячеек нет. Линейное опробование образует кластеры — подряд идущие занятые ячейки, из-за которых средняя длина пробы растёт; квадратичное разносит пробы дальше и меньше склонно к первичным кластерам. Удаление требует особой пометки «удалено», иначе цепочка поиска разорвётся.</p>
   </details>
 
   <details class="pseudo">
@@ -60,10 +67,12 @@
   h ← код(символа) mod m
   добавить ключ в цепочку table[h]       <span class="cm">// коллизия не ищет другую ячейку</span>
 
-Открытая адресация (линейное опробование):
+Открытая адресация:
   h ← код(символа) mod m
-  <span class="kw">пока</span> ячейка h занята: h ← (h + 1) mod m
-  записать ключ в ячейку h</pre>
+  <span class="kw">пока</span> ячейка занята — берём следующую пробу:
+      линейная:     (h + 1), (h + 2), (h + 3), … mod m
+      квадратичная: (h + 1²), (h + 2²), (h + 3²), … mod m
+  записать ключ в свободную ячейку</pre>
   </details>
 
   <div id="quiz"></div>
@@ -81,6 +90,7 @@
   const S = window.TreeSite;
   const $ = S.$;
   let method = 'chain';
+  let probe = 'linear';
   let steps = [];
 
   const player = S.mountPlayer($('stage'), {
@@ -224,7 +234,7 @@
     }
     add({
       title:'Пустая хеш-таблица',
-      text:`Размер таблицы <b>m = ${m}</b>, метод — <b>открытая адресация</b> с линейным опробованием.<span class="l">Если ячейка h занята, проверяем (h + 1) mod m, затем (h + 2) mod m и так далее. Все ключи лежат в самой таблице.</span>`,
+      text:`Размер таблицы <b>m = ${m}</b>, метод — <b>открытая адресация</b> с ${probe === 'quad' ? 'квадратичным' : 'линейным'} опробованием.<span class="l">${probe === 'quad' ? 'Если ячейка h занята, проверяем (h + 1²) mod m, затем (h + 2²) mod m, (h + 3²) mod m и так далее.' : 'Если ячейка h занята, проверяем (h + 1) mod m, затем (h + 2) mod m и так далее.'} Все ключи лежат в самой таблице.</span>`,
       html: renderOpen(slots)
     });
 
@@ -235,7 +245,7 @@
         text:`Код символа «<b>${S.esc(ch)}</b>» = ${S.code(ch)}. Стартовая ячейка: <code>${S.code(ch)} mod ${m} = ${h}</code>.`,
         html: renderOpen(slots, {current:h, probe:[h]})
       });
-      let pos = h, examined = 0, insertedHere = false, collided = false;
+      let pos = h, examined = 0, i = 0, insertedHere = false, collided = false;
       while(examined < m){
         probes++;
         examined++;
@@ -251,12 +261,14 @@
           break;
         }
         if(!collided){ collisions++; collided = true; }
+        i++;
+        const next = probe === 'quad' ? (h + i * i) % m : (pos + 1) % m;
         add({
           title:`Ячейка ${pos} занята`,
-          text:`В ячейке <b>${pos}</b> уже стоит «<b>${S.esc(slots[pos])}</b>». Коллизия — переходим к следующей ячейке <code>(${pos} + 1) mod ${m} = ${(pos + 1) % m}</code>.`,
+          text:`В ячейке <b>${pos}</b> уже стоит «<b>${S.esc(slots[pos])}</b>». Коллизия — переходим к ${probe === 'quad' ? `пробе <code>(${h} + ${i}²) mod ${m} = ${next}</code>` : `следующей ячейке <code>(${pos} + 1) mod ${m} = ${next}</code>`}.`,
           html: renderOpen(slots, {current:pos, probe:probePath(h, pos, m)})
         });
-        pos = (pos + 1) % m;
+        pos = next;
       }
       if(!insertedHere){
         failed++;
@@ -270,18 +282,19 @@
 
     add({
       title:'Готово: таблица построена',
-      text:`Вставлено ключей: <b>${inserted}</b> из ${keys.length}. Коллизий: <b>${collisions}</b>. Всего проб: <b>${probes}</b>${failed ? `, не поместилось: <b>${failed}</b>` : ''}.<span class="l">Коэффициент заполнения α = ${inserted}/${m} ≈ ${(inserted / m).toFixed(2)}. Линейное опробование образует кластеры: чем выше α, тем длиннее пробы.</span>`,
+      text:`Вставлено ключей: <b>${inserted}</b> из ${keys.length}. Коллизий: <b>${collisions}</b>. Всего проб: <b>${probes}</b>${failed ? `, не поместилось: <b>${failed}</b>` : ''}.<span class="l">Коэффициент заполнения α = ${inserted}/${m} ≈ ${(inserted / m).toFixed(2)}. ${probe === 'quad' ? 'Квадратичное опробование разносит пробы дальше и меньше склонно к первичным кластерам, чем линейное.' : 'Линейное опробование образует кластеры: чем выше α, тем длиннее пробы.'}</span>`,
       html: renderOpen(slots)
     });
   }
 
   function probePath(start, end, m){
     const path = [];
-    let p = start;
+    let p = start, i = 0;
     while(true){
       path.push(p);
       if(p === end) break;
-      p = (p + 1) % m;
+      i++;
+      p = probe === 'quad' ? (start + i * i) % m : (p + 1) % m;
       if(path.length > m) break;
     }
     return path;
@@ -297,6 +310,7 @@
   $('go').onclick = build;
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('size').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  $('probe').onchange = build;
   build();
 
   S.mountQuiz($('quiz'), {
@@ -306,7 +320,8 @@
       { q: 'Какая здесь хеш-функция?', options: ['Код символа mod m', 'Случайное число', 'Длина строки'], answer: 0, why: 'Хеш ключа — код символа по модулю размера таблицы: h = код(символ) mod m.' },
       { q: 'При прямом связывании коллизия — это…', options: ['Попадание в одну цепочку', 'Переполнение таблицы', 'Удаление ключа'], answer: 0, why: 'Ключи с одинаковым h попадают в одну цепочку — искать другую ячейку не нужно.' },
       { q: 'Линейное опробование проверяет ячейки…', options: ['Только h', '(h+1), (h+2), … по модулю m', 'В случайном порядке'], answer: 1, why: 'Если h занята, проверяются (h+1) mod m, затем (h+2) mod m и так далее по кругу.' },
-      { q: 'Коэффициент заполнения α равен…', options: ['m / n', 'n / m', 'n · m'], answer: 1, why: 'α = n / m — отношение числа ключей к размеру таблицы; чем выше α, тем длиннее пробы.' }
+      { q: 'Коэффициент заполнения α равен…', options: ['m / n', 'n / m', 'n · m'], answer: 1, why: 'α = n / m — отношение числа ключей к размеру таблицы; чем выше α, тем длиннее пробы.' },
+      { q: 'Квадратичные пробы проверяют ячейки…', options: ['(h + i²) mod m', '(h + i) mod m', 'только h'], answer: 0, why: 'При квадратичном опробовании i-я проба — (h + i²) mod m: пробы разлетаются дальше, чем при линейном.' }
     ]
   });
 })();

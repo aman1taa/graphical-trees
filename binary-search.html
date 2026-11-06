@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Бинарный поиск символа — два типа</title>
+<title>Бинарный поиск символа — три типа</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
 </header>
 <main>
   <h1>Бинарный поиск символа</h1>
-  <p class="lead">Два типа двоичного поиска в отсортированном массиве. Тип 1 ищет точное вхождение символа. Тип 2 ищет позицию вставки — первое место, где элемент не меньше искомого (lower bound). На каждом шаге видно, как сужается диапазон.</p>
+  <p class="lead">Три типа двоичного поиска в отсортированном массиве. Тип 1 ищет точное вхождение символа, тип 2 — позицию вставки (lower bound), тип 3 — сразу все вхождения символа. На каждом шаге видно, как сужается диапазон.</p>
 
   <section class="card">
     <div class="row">
@@ -37,15 +37,17 @@
   <div class="row tabs wrap" id="typeTabs" role="tablist" aria-label="Тип бинарного поиска">
     <button type="button" class="tab on" data-type="1">Тип 1 — точное вхождение</button>
     <button type="button" class="tab" data-type="2">Тип 2 — позиция вставки</button>
+    <button type="button" class="tab" data-type="3">Тип 3 — все вхождения</button>
   </div>
 
   <div id="stage"></div>
   <div class="search-info" id="searchStats"></div>
 
   <details>
-    <summary>Чем отличаются два типа</summary>
+    <summary>Чем отличаются три типа</summary>
     <p><b>Тип 1.</b> Проверяем средний элемент. Если он равен искомому — ответ найден. Если искомый меньше, продолжаем в левой половине, иначе — в правой. Когда <code>lo &gt; hi</code>, элемента в массиве нет.</p>
     <p><b>Тип 2.</b> Ищем не сам элемент, а границу: первое место <code>pos</code>, где <code>a[pos] ≥ x</code>. Такой поиск возвращает позицию вставки, сохраняющую порядок, и корректно работает с повторами. Если <code>x</code> больше всех элементов, ответ — <code>n</code> (вставка в конец).</p>
+    <p><b>Тип 3.</b> Ищем все вхождения символа. В отсортированном массиве равные элементы стоят подряд, поэтому достаточно найти нижнюю границу (первое <code>a[i] ≥ x</code>) и верхнюю (первое <code>a[i] &gt; x</code>) — все позиции между ними и есть ответ.</p>
     <pre class="codeblock">// Тип 1: точное вхождение
 lo = 0; hi = n - 1;
 while (lo &lt;= hi) {
@@ -63,7 +65,23 @@ while (lo &lt; hi) {
   if (a[mid] &lt; x) lo = mid + 1;
   else hi = mid;
 }
-return lo;</pre>
+return lo;
+
+// Тип 3: все вхождения
+lo = 0; hi = n;
+while (lo < hi) {                  // нижняя граница
+  mid = (lo + hi) / 2;
+  if (a[mid] < x) lo = mid + 1;
+  else hi = mid;
+}
+first = lo;
+lo = 0; hi = n;
+while (lo < hi) {                  // верхняя граница
+  mid = (lo + hi) / 2;
+  if (a[mid] <= x) lo = mid + 1;
+  else hi = mid;
+}
+last = lo - 1;                     // вхождения: a[first..last]</pre>
   </details>
 
   <details>
@@ -88,7 +106,22 @@ return lo;</pre>
       mid ← (lo + hi) / 2
       <span class="kw">если</span> a[mid] &lt; x: lo ← mid + 1
       <span class="kw">иначе</span>: hi ← mid
-  <span class="kw">вернуть</span> lo</pre>
+  <span class="kw">вернуть</span> lo
+
+Тип 3: все вхождения
+  lo ← 0; hi ← n
+  <span class="kw">пока</span> lo &lt; hi:                      <span class="cm">// нижняя граница</span>
+      mid ← (lo + hi) / 2
+      <span class="kw">если</span> a[mid] &lt; x: lo ← mid + 1
+      <span class="kw">иначе</span>: hi ← mid
+  first ← lo
+  lo ← 0; hi ← n
+  <span class="kw">пока</span> lo &lt; hi:                      <span class="cm">// верхняя граница</span>
+      mid ← (lo + hi) / 2
+      <span class="kw">если</span> a[mid] ≤ x: lo ← mid + 1
+      <span class="kw">иначе</span>: hi ← mid
+  last ← lo − 1
+  <span class="cm">// вхождения: a[first..last]</span></pre>
   </details>
 
   <div id="quiz"></div>
@@ -109,6 +142,7 @@ return lo;</pre>
   let type = '1';
   let steps = [];
   const CODE1 = [["int c1;", ""], ["", ""], ["int dvp1(int a[], int x, int n){", "init"], ["    int l = 0;", "init"], ["    int r = n-1;", "init"], ["    int m;", "init"], ["    int c = 0;", "init"], ["    while (l<=r) {", "loop"], ["", ""], ["        m = (l+r)/2;", "mid"], ["        c++;", ""], ["        if (a[m] == x) { c1 = c; return m;}", "eq found"], ["        c++;", ""], ["        if (a[m] < x) { l = m + 1;}", "lt narrow"], ["        else r = m-1;", "narrow"], ["    }", ""], ["    return -1;", "nf"], ["}", ""]], CODE2 = [["int dvp2(int a[], int x, int n){", "init"], ["    int l = 0;", "init"], ["    int r = n;", "init"], ["    int m;", "init"], ["    int c = 0;", "init"], ["    while (l<r) {", "loop"], ["        c++;", ""], ["        m = l+(r-l)/2;", "mid"], ["        if (a[m] < x) l = m + 1;", "lt narrow"], ["        else r = m;", "narrow"], ["    }", ""], ["    c++;", ""], ["    if (a[r] == x) {c1 = c; return m;}", "end"], ["    else return -1;", "end"], ["}", ""]];
+  const CODE3 = [["int bsall(int a[], int x, int n){", "init"], ["    int l = 0, r = n, m;", "init"], ["    /* нижняя граница: первое a[i] >= x */", ""], ["    while (l < r) {", "lb"], ["        m = l + (r - l) / 2;", "mid"], ["        if (a[m] < x) l = m + 1;", "lt"], ["        else r = m;", "narrow"], ["    }", ""], ["    int first = l;", "lbend"], ["    /* верхняя граница: первое a[i] > x */", ""], ["    l = 0; r = n;", "ub"], ["    while (l < r) {", "ub"], ["        m = l + (r - l) / 2;", "mid"], ["        if (a[m] <= x) l = m + 1;", "narrow"], ["        else r = m;", "narrow"], ["    }", ""], ["    int last = l - 1;", "ubend"], ["    /* все вхождения: a[first..last] */", ""], ["    return (first <= last) ? first : -1;", "end"], ["}", ""]];
   const pocket = S.mountPocket({key:'bsCodeOpen', title:'Бинарный поиск на C', desc:'Подсвечены строки текущего шага. <code>c</code> — счётчик сравнений.', code:CODE1});
   function bsTags(t){
     if(/^Тип/.test(t)) return ['init'];
@@ -133,7 +167,7 @@ return lo;</pre>
     o = o || {};
     const items = (o.arr || []).map((ch, i) => ({k:ch, w:i}));
     steps.push({
-      title, text, code: bsTags(title),
+      title, text, code: o.code || bsTags(title),
       strip: S.strip(items, {lo:o.lo, hi:o.hi, mid:o.mid, done:o.done, cls:'large'})
     });
   }
@@ -152,7 +186,8 @@ return lo;</pre>
 
     const sortedNote = parsed.chars.join('') !== arr.join('') ? ' Входной набор был отсортирован по коду символа.' : '';
     if(type === '1') buildType1(arr, target, sortedNote);
-    else buildType2(arr, target, sortedNote);
+    else if(type === '2') buildType2(arr, target, sortedNote);
+    else buildType3(arr, target, sortedNote);
 
     player.setSteps(steps);
   }
@@ -210,6 +245,49 @@ return lo;</pre>
     $('searchStats').innerHTML = `<span class="pill accent">Сравнений: <b>${C}</b></span><span class="pill ok">Позиция: <b>${pos}</b></span><span class="pill">Тип: <b>2</b></span>`;
   }
 
+  function buildType3(arr, target, note){
+    pocket.setCode(CODE3, {title:'Тип 3: bsall — все вхождения'});
+    let C = 0;
+    rec('Тип 3: все вхождения', `Ищем <b>все</b> позиции символа «<b>${S.esc(target)}</b>». Сначала находим нижнюю границу (первое вхождение), затем верхнюю (первое место после последнего вхождения). Вхождения образуют один отрезок.${note}<span class="l">Равные элементы в отсортированном массиве стоят подряд, поэтому ответ — сплошной диапазон.</span>`, {arr, lo:0, hi:arr.length - 1, mid:-1, code:['init']});
+
+    let lo = 0, hi = arr.length;
+    while(lo < hi){
+      const mid = Math.floor((lo + hi) / 2);
+      C++;
+      const v = arr[mid];
+      const less = S.code(v) < S.code(target);
+      rec(`Нижняя граница: «${v}»`, `«<b>${S.esc(v)}</b>» ${less ? '&lt;' : '≥'} «<b>${S.esc(target)}</b>» — ${less ? 'первое вхождение правее середины' : 'середина подходит, но слева может быть раньше'}. Сравнений: <b>${C}</b>.`, {arr, lo, hi:hi - 1, mid, code:['lb', 'mid', less ? 'lt' : 'narrow']});
+      if(less) lo = mid + 1; else hi = mid;
+      rec('Нижняя граница: сужаем', `Диапазон-кандидат стал <b>[${lo}…${hi})</b>.`, {arr, lo, hi:hi - 1, mid:lo < hi ? Math.floor((lo + hi) / 2) : -1, code:['lb']});
+    }
+    const first = lo;
+    const ok1 = first < arr.length && S.code(arr[first]) === S.code(target);
+    rec(`Первое вхождение: ${first}`, `Нижняя граница найдена: первое место, где элемент ≥ «${S.esc(target)}», — позиция <b>${first}</b>.${ok1 ? ` Там стоит «<b>${S.esc(arr[first])}</b>».` : ''}<span class="l">Если в этой позиции не искомый символ — его в массиве нет.</span>`, {arr, lo:0, hi:arr.length - 1, mid:first < arr.length ? first : -1, done:ok1 ? [first] : [], code:['lbend']});
+
+    lo = 0; hi = arr.length;
+    while(lo < hi){
+      const mid = Math.floor((lo + hi) / 2);
+      C++;
+      const v = arr[mid];
+      const leq = S.code(v) <= S.code(target);
+      rec(`Верхняя граница: «${v}»`, `«<b>${S.esc(v)}</b>» ${leq ? '≤' : '&gt;'} «<b>${S.esc(target)}</b>» — ${leq ? 'последнее вхождение правее середины' : 'граница левее или на этой позиции'}. Сравнений: <b>${C}</b>.`, {arr, lo, hi:hi - 1, mid, code:['ub', 'mid']});
+      if(leq) lo = mid + 1; else hi = mid;
+      rec('Верхняя граница: сужаем', `Диапазон-кандидат стал <b>[${lo}…${hi})</b>.`, {arr, lo, hi:hi - 1, mid:lo < hi ? Math.floor((lo + hi) / 2) : -1, code:['ub']});
+    }
+    const last = lo - 1;
+    rec(`Последнее вхождение: ${last}`, `Верхняя граница: первое место, где элемент &gt; «${S.esc(target)}», — позиция <b>${lo}</b>, значит последнее вхождение — <b>${last}</b>.`, {arr, lo:0, hi:arr.length - 1, mid:last, code:['ubend']});
+
+    if(first <= last){
+      const range = Array.from({length: last - first + 1}, (_, k) => first + k);
+      const count = range.length;
+      rec(`Все вхождения: ${count}`, `Символ «<b>${S.esc(target)}</b>» встречается на позициях <b>${range.join(', ')}</b>.<span class="l">Все они идут подряд в отрезке [${first}…${last}]. Сравнений: <b>${C}</b>.</span>`, {arr, lo:0, hi:arr.length - 1, done:range, code:['end']});
+      $('searchStats').innerHTML = `<span class="pill accent">Сравнений: <b>${C}</b></span><span class="pill ok">Вхождений: <b>${count}</b></span><span class="pill">Позиции: <b>${range.join(', ')}</b></span>`;
+    } else {
+      rec('Элемент не найден', `Символа «<b>${S.esc(target)}</b>» в массиве нет: первое вхождение (${first}) оказалось правее последнего (${last}). Сравнений: <b>${C}</b>.`, {arr, lo:0, hi:arr.length - 1, done:[], code:['nf']});
+      $('searchStats').innerHTML = `<span class="pill accent">Сравнений: <b>${C}</b></span><span class="pill">Не найдено</span><span class="pill">Тип: <b>3</b></span>`;
+    }
+  }
+
   $('typeTabs').addEventListener('click', e => {
     const b = e.target.closest('[data-type]');
     if(!b) return;
@@ -225,12 +303,13 @@ return lo;</pre>
 
   S.mountQuiz($('quiz'), {
     title: 'Проверь себя',
-    intro: 'Четыре вопроса о бинарном поиске.',
+    intro: 'Пять вопросов о бинарном поиске.',
     questions: [
       { q: 'Обязательное условие для бинарного поиска?', options: ['Массив отсортирован', 'Массив из букв', 'Массив без повторов'], answer: 0, why: 'Бинарный поиск отбрасывает половину диапазона — это работает только на отсортированном массиве.' },
       { q: 'Тип 2 (lower bound) возвращает…', options: ['Точный индекс x', 'Первое место, где элемент ≥ x', 'Всегда −1'], answer: 1, why: 'Lower bound — первое место, где элемент не меньше искомого; это позиция вставки, сохраняющая порядок.' },
       { q: 'Какова сложность бинарного поиска?', options: ['O(n)', 'O(log n)', 'O(n log n)'], answer: 1, why: 'После каждого сравнения остаётся не более половины диапазона — O(log n) сравнений.' },
-      { q: 'Что делает тип 1, если элемента нет?', options: ['Возвращает −1', 'Вставляет элемент', 'Возвращает n'], answer: 0, why: 'Когда диапазон становится пустым (lo &gt; hi), тип 1 возвращает −1: элемента в массиве нет.' }
+      { q: 'Что делает тип 1, если элемента нет?', options: ['Возвращает −1', 'Вставляет элемент', 'Возвращает n'], answer: 0, why: 'Когда диапазон становится пустым (lo &gt; hi), тип 1 возвращает −1: элемента в массиве нет.' },
+      { q: 'Как тип 3 находит все вхождения?', options: ['Нижняя + верхняя граница', 'Только нижняя граница', 'Случайным перебором'], answer: 0, why: 'Равные элементы стоят подряд: нашли первое вхождение (lower bound) и первое место после последнего (upper bound) — всё между ними и есть ответ.' }
     ]
   });
 })();
