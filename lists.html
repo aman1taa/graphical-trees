@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Списки — стек, очередь, односвязный список</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← Все разделы</a>
+  <span class="crumb">Списки</span>
+  <button class="theme" id="themeBtn" type="button" title="Сменить тему">☾</button>
+</header>
+<main>
+  <h1>Стек, очередь и список</h1>
+  <p class="lead">Три линейные структуры данных. Стек работает по принципу LIFO, очередь — FIFO, а односвязный список позволяет печатать элементы в прямом и обратном порядке, считать контрольную сумму и число серий.</p>
+
+  <section class="card">
+    <div class="row">
+      <div class="field">
+        <label for="inp">Элементы (буквы)</label>
+        <input id="inp" value="KDBACFGE" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Например: KDBACFGE">
+      </div>
+      <button class="p" id="go" type="button">Построить</button>
+      <button id="ex" type="button">Пример</button>
+    </div>
+    <div class="meta" style="margin-top:9px">Повторы разрешены. До 20 элементов. Ключ элемента — его код символа.</div>
+  </section>
+
+  <div class="row tabs wrap" id="modeTabs" role="tablist" aria-label="Структура данных">
+    <button type="button" class="tab on" data-mode="stack">Стек</button>
+    <button type="button" class="tab" data-mode="queue">Очередь</button>
+    <button type="button" class="tab" data-mode="list">Список</button>
+  </div>
+
+  <div id="stage"></div>
+
+  <details>
+    <summary>Стек, очередь и список — в чём разница</summary>
+    <p><b>Стек</b> — LIFO («последним пришёл — первым ушёл»): элементы добавляются и снимаются с одного конца — вершины.</p>
+    <p><b>Очередь</b> — FIFO («первым пришёл — первым ушёл»): элементы добавляются в конец, а забираются из начала.</p>
+    <p><b>Односвязный список</b> — каждый элемент ссылается на следующий. Позволяет обходить элементы от головы к хвосту и обратно, удалять и добавлять.</p>
+  </details>
+
+  <details class="pseudo">
+    <summary>Псевдокод</summary>
+    <pre>Стек (LIFO):
+  push: добавить элемент на вершину
+  pop:  снять элемент с вершины
+
+Очередь (FIFO):
+  enqueue: добавить элемент в конец
+  dequeue: забрать элемент из начала
+
+Список (односвязный):
+  печать в прямом порядке:  обойти от головы к хвосту
+  печать в обратном:        рекурсивно до конца, печатать при возврате
+  контрольная сумма:        сложить коды всех элементов
+  число серий:              число подряд идущих неубывающих групп</pre>
+  </details>
+
+  <div id="quiz"></div>
+
+  <nav class="pager">
+    <a href="indexing.html">← Индексация</a>
+    <a href="hashing.html">Хеширование →</a>
+  </nav>
+</main>
+<script src="assets/core.js"></script>
+<script>
+(function(){
+  'use strict';
+  const S = window.TreeSite;
+  const $ = S.$;
+  const esc = S.esc;
+  let mode = 'stack';
+  let steps = [];
+
+  const player = S.mountPlayer($('stage'), {
+    autoplay: 1200,
+    render(canvas, step){
+      canvas.classList.add('compact');
+      canvas.innerHTML = step.html || '';
+    }
+  });
+
+  function renderStack(arr, o){
+    o = o || {};
+    let h = '<div class="vstack">';
+    if(!arr.length) return h + '<span class="meta">пусто</span></div>';
+    arr.forEach((ch, i) => {
+      let cls = 'vbox';
+      if(o.top === i) cls += ' top';
+      if(o.isNew === i) cls += ' new';
+      h += `<span class="${cls}">${esc(ch)}</span>`;
+    });
+    return h + '</div>';
+  }
+
+  function renderQueue(arr, o){
+    o = o || {};
+    let h = '<div class="qline">';
+    if(!arr.length) return h + '<span class="meta">пусто</span></div>';
+    arr.forEach((ch, i) => {
+      let cls = 'qbox';
+      if(o.front === i) cls += ' front';
+      if(o.isNew === i) cls += ' new';
+      h += `<span class="${cls}">${esc(ch)}</span>`;
+    });
+    return h + '</div>';
+  }
+
+  function renderList(arr, o){
+    o = o || {};
+    let h = '<div class="llist">';
+    if(!arr.length) return h + '<span class="meta">пусто</span></div>';
+    arr.forEach((ch, i) => {
+      if(i > 0) h += '<span class="larr">→</span>';
+      let cls = 'lnode';
+      if(o.cur === i) cls += ' cur';
+      if(o.isNew === i) cls += ' new';
+      h += `<span class="${cls}">${esc(ch)}</span>`;
+    });
+    return h + '</div>';
+  }
+
+  const add = (title, text, html) => steps.push({title, text, html});
+
+  function countSeries(chars){
+    if(!chars.length) return {count:0, runs:[]};
+    const runs = [];
+    let start = 0;
+    for(let i = 1; i <= chars.length; i++){
+      if(i === chars.length || S.code(chars[i]) < S.code(chars[i - 1])){
+        runs.push(chars.slice(start, i));
+        start = i;
+      }
+    }
+    return {count:runs.length, runs};
+  }
+
+  function buildStack(chars){
+    const stack = [];
+    add('Стек пуст', 'Стек — структура LIFO: последним пришёл, первым ушёл. Элементы кладутся на вершину и снимаются с неё.', renderStack(stack));
+    chars.forEach(ch => {
+      stack.push(ch);
+      add(`Push: кладём «${ch}»`, `Добавляем «<b>${esc(ch)}</b>» на вершину стека. В стеке теперь ${stack.length} ${stack.length === 1 ? 'элемент' : 'элементов'}.<span class="l">Вершина — последний добавленный элемент.</span>`, renderStack(stack, {top:stack.length - 1, isNew:stack.length - 1}));
+    });
+    add('Стек заполнен', `В стеке <b>${stack.length}</b> элементов, снизу вверх: <b>${stack.map(esc).join(' · ')}</b>.<span class="l">Снимать будем с вершины — в обратном порядке.</span>`, renderStack(stack, {top:stack.length - 1}));
+    const popped = [];
+    for(let i = stack.length - 1; i >= 0; i--){
+      const ch = stack[i];
+      popped.push(ch);
+      add(`Pop: снимаем «${ch}»`, `Снимаем «<b>${esc(ch)}</b>» с вершины — это последний добавленный элемент (LIFO).<span class="l">Порядок извлечения: ${popped.map(esc).join(' → ')}</span>`, renderStack(stack.slice(0, i), {top:i - 1}));
+    }
+    add('Стек опустел', `Извлекли всё в порядке <b>${popped.map(esc).join(' → ')}</b> — обратном порядку добавления.<span class="l">Это и есть LIFO: последним пришёл — первым ушёл.</span>`, renderStack([]));
+  }
+
+  function buildQueue(chars){
+    const queue = [];
+    add('Очередь пуста', 'Очередь — структура FIFO: первым пришёл, первым ушёл. Элементы ставятся в конец, забираются из начала.', renderQueue(queue));
+    chars.forEach(ch => {
+      queue.push(ch);
+      add(`Enqueue: ставим «${ch}»`, `Ставим «<b>${esc(ch)}</b>» в конец очереди. В очереди теперь ${queue.length} ${queue.length === 1 ? 'элемент' : 'элементов'}.`, renderQueue(queue, {front:0, isNew:queue.length - 1}));
+    });
+    add('Очередь заполнена', `В очереди <b>${queue.length}</b> элементов: <b>${queue.map(esc).join(' · ')}</b>.<span class="l">Забирать будем из начала.</span>`, renderQueue(queue, {front:0}));
+    const dequeued = [];
+    for(let i = 0; i < queue.length; i++){
+      const ch = queue[i];
+      dequeued.push(ch);
+      add(`Dequeue: забираем «${ch}»`, `Забираем «<b>${esc(ch)}</b>» из начала очереди (FIFO).<span class="l">Порядок извлечения: ${dequeued.map(esc).join(' → ')}</span>`, renderQueue(queue.slice(i + 1), {front:0}));
+    }
+    add('Очередь опустела', `Извлекли всё в порядке <b>${dequeued.map(esc).join(' → ')}</b> — том же, что и добавление.<span class="l">Это и есть FIFO: первым пришёл — первым ушёл.</span>`, renderQueue([]));
+  }
+
+  function buildList(chars){
+    const list = [];
+    add('Список пуст', 'Односвязный список: каждый элемент ссылается на следующий. Добавляем элементы в конец.', renderList([]));
+    chars.forEach(ch => {
+      list.push(ch);
+      add(`Добавляем «${ch}»`, `Добавляем «<b>${esc(ch)}</b>» в конец списка.`, renderList(list, {isNew:list.length - 1}));
+    });
+    add('Список построен', `В списке <b>${list.length}</b> элементов.<span class="l">Теперь выполним операции: печать в прямом и обратном порядке, контрольную сумму, число серий и удаление всех.</span>`, renderList(list));
+
+    add('Печать (прямой обход)', `Обходим список от головы к хвосту и печатаем элементы.<span class="l">Рекурсивно: печатаем первый, затем остаток.</span>`, renderList(list, {cur:0}));
+    for(let i = 1; i < list.length; i++){
+      add(`Печать: «${list[i]}»`, `Следующий элемент — «<b>${esc(list[i])}</b>».<span class="l">Прямой порядок: ${list.slice(0, i + 1).map(esc).join(' → ')}</span>`, renderList(list, {cur:i}));
+    }
+    add('Прямой порядок готов', `Прямой порядок элементов: <b>${list.map(esc).join(' → ')}</b>.`, renderList(list));
+
+    add('Печать в обратном порядке', `Рекурсивно доходим до конца списка, а при возврате печатаем элементы — получится обратный порядок.`, renderList(list, {cur:list.length - 1}));
+    for(let i = list.length - 2; i >= 0; i--){
+      add(`Обратный обход: «${list[i]}»`, `При возврате из рекурсии печатаем «<b>${esc(list[i])}</b>».`, renderList(list, {cur:i}));
+    }
+    add('Обратный порядок готов', `Обратный порядок элементов: <b>${list.slice().reverse().map(esc).join(' → ')}</b>.`, renderList(list));
+
+    const checksum = list.reduce((s, ch) => s + S.code(ch), 0);
+    add('Контрольная сумма', `Сумма кодов всех элементов: ${list.map(ch => S.code(ch)).join(' + ')} = <b>${checksum}</b>.`, renderList(list));
+
+    const series = countSeries(chars);
+    const seriesDesc = series.runs.map(r => r.map(esc).join('')).join(' | ');
+    add('Число серий', `Серия — подряд идущие элементы в неубывающем порядке. Серии: ${seriesDesc ? '<b>' + seriesDesc + '</b>' : '—'}; всего серий: <b>${series.count}</b>.`, renderList(list));
+
+    add('Удаление всех элементов', `Освобождаем список: удаляем элементы один за другим.`, renderList(list, {cur:0}));
+    for(let i = 0; i < list.length; i++){
+      add(`Удаляем «${list[i]}»`, `Удаляем «<b>${esc(list[i])}</b>». Осталось ${list.length - i - 1} ${list.length - i - 1 === 1 ? 'элемент' : 'элементов'}.`, renderList(list.slice(i + 1)));
+    }
+    add('Список пуст', `Все элементы удалены — список пуст.`, renderList([]));
+  }
+
+  function build(){
+    const chars = S.parseChars($('inp').value, 20, true).chars;
+    steps = [];
+    if(!chars.length){
+      player.setSteps([{title:'Нет элементов', text:'Введите хотя бы одну букву.', html:''}]);
+      return;
+    }
+    if(mode === 'stack') buildStack(chars);
+    else if(mode === 'queue') buildQueue(chars);
+    else buildList(chars);
+    player.setSteps(steps);
+  }
+
+  $('modeTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-mode]');
+    if(!b) return;
+    mode = b.dataset.mode;
+    [...$('modeTabs').querySelectorAll('.tab')].forEach(x => x.classList.toggle('on', x === b));
+    build();
+  });
+  $('go').onclick = build;
+  $('ex').onclick = () => { $('inp').value = S.randLetters([6, 10]); build(); };
+  $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  $('inp').value = S.randLetters([6, 10]);
+  build();
+
+  S.mountQuiz($('quiz'), {
+    title: 'Проверь себя',
+    intro: 'Четыре вопроса о стеке, очереди и списке.',
+    questions: [
+      { q: 'Стек работает по принципу…', options: ['LIFO — последним пришёл, первым ушёл', 'FIFO — первым пришёл, первым ушёл', 'Случайного доступа'], answer: 0, why: 'Стек — LIFO: элементы добавляются и снимаются с одного конца (вершины).' },
+      { q: 'Очередь работает по принципу…', options: ['LIFO', 'FIFO — первым пришёл, первым ушёл', 'Случайного доступа'], answer: 1, why: 'Очередь — FIFO: добавляем в конец, забираем из начала.' },
+      { q: 'Что такое контрольная сумма списка?', options: ['Сумма кодов элементов', 'Число элементов', 'Число серий'], answer: 0, why: 'Контрольная сумма — сумма значений (кодов символов) всех элементов списка.' },
+      { q: 'Что такое серия в списке?', options: ['Подряд идущие неубывающие элементы', 'Повторяющиеся элементы', 'Все элементы списка'], answer: 0, why: 'Серия — максимальная группа подряд идущих элементов в неубывающем порядке.' }
+    ]
+  });
+})();
+</script>
+</body>
+</html>

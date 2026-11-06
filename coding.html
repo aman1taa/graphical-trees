@@ -404,6 +404,54 @@
     return `<div class="tree-host"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Кодовое дерево Хаффмана">${edges}${nodes}</svg></div>`;
   }
 
+  function trieFromCodes(list){
+    let id = 0;
+    const root = {id:++id, ch:null, l:null, r:null};
+    list.forEach(e => {
+      let node = root;
+      for(const bit of (e.code || '')){
+        if(bit === '0'){ if(!node.l) node.l = {id:++id, ch:null, l:null, r:null}; node = node.l; }
+        else { if(!node.r) node.r = {id:++id, ch:null, l:null, r:null}; node = node.r; }
+      }
+      node.ch = e.ch;
+    });
+    return root;
+  }
+
+  function codeTreeHTML(root, codeMap){
+    if(!root) return '';
+    const gap = 46, lvl = 62, R = 17;
+    const L = S.layoutBinary(root, gap, lvl);
+    const W = Math.max((L.count - 1) * gap + 80, 300);
+    const H = L.depth * lvl + 70;
+    const ox = (W - (L.count - 1) * gap) / 2;
+    const X = id => ox + L.pos[id].x * gap;
+    const Y = id => 26 + L.pos[id].d * lvl;
+    let edges = '', nodes = '';
+    (function walk(n){
+      if(!n) return;
+      [n.l, n.r].forEach((c, i) => {
+        if(!c) return;
+        edges += `<line x1="${X(n.id)}" y1="${Y(n.id)}" x2="${X(c.id)}" y2="${Y(c.id)}" stroke="var(--mut)" stroke-width="1.4" opacity=".7"/>`;
+        edges += `<text x="${(X(n.id) + X(c.id)) / 2 + (i === 0 ? -9 : 9)}" y="${(Y(n.id) + Y(c.id)) / 2 + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ac)">${i}</text>`;
+        walk(c);
+      });
+    })(root);
+    (function walk(n){
+      if(!n) return;
+      walk(n.l); walk(n.r);
+      const cx = X(n.id), cy = Y(n.id);
+      if(n.ch){
+        nodes += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="var(--node)" stroke="var(--bd)" stroke-width="1.5"/>`;
+        nodes += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--tx)">${esc(n.ch)}</text>`;
+        nodes += `<text x="${cx}" y="${cy + R + 13}" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--ac)" font-family="IBM Plex Mono,ui-monospace,Consolas,monospace">${esc(codeMap[n.ch] || '')}</text>`;
+      } else {
+        nodes += `<circle cx="${cx}" cy="${cy}" r="${R - 4}" fill="var(--acsoft)" stroke="var(--ac)" stroke-width="1.4"/>`;
+      }
+    })(root);
+    return `<div class="tree-host"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Кодовое дерево">${edges}${nodes}</svg></div>`;
+  }
+
   function infoHTML(){
     const a = INFO[curCode];
     return `
@@ -467,6 +515,49 @@
       title:'Сравнение всех кодов',
       text:`Все четыре кода построены на одном наборе вероятностей. ${curCode === 'huffman' ? 'Хаффман даёт минимально возможную среднюю длину среди префиксных кодов — проверьте, что остальные строки не меньше.' : 'Минимальную среднюю длину даёт код Хаффмана — он подсвечен как лучший.'}<span class="l">Зелёная рамка — код с наименьшим L, синяя — текущий построенный код.</span>`,
       html:tableHTML(list, list.length, null, mode) + cmpHTML()
+    });
+
+    const codeMap = {};
+    list.forEach(e => { codeMap[e.ch] = e.code; });
+
+    if(mode !== 'huffman'){
+      steps.push({
+        title:'Кодовое дерево',
+        text:`Дерево префиксного кода: левое ребро — бит <b>0</b>, правое — <b>1</b>. Код символа читается от корня к листу и подписан под символом.`,
+        html: codeTreeHTML(trieFromCodes(list), codeMap)
+      });
+    }
+
+    let encoded = '';
+    DATA.chars.forEach(ch => { encoded += codeMap[ch] || ''; });
+    const totalBits = encoded.length;
+    const distinct = list.length;
+    const fixedBits = Math.ceil(Math.log2(Math.max(1, distinct)));
+    const fixedTotal = DATA.N * fixedBits;
+    const ratio = totalBits > 0 ? fixedTotal / totalBits : 0;
+    const preview = encoded.length > 120 ? encoded.slice(0, 120) + '…' : encoded;
+    steps.push({
+      title:'Кодирование текста',
+      text:`Побуквенно закодировали набор «${DATA.chars.map(esc).join('')}» и получили последовательность из <b>${totalBits}</b> бит.`,
+      html:`<div class="mono" style="font-size:13px;word-break:break-all;line-height:1.7">${esc(preview)}</div>`
+    });
+    steps.push({
+      title:'Коэффициент сжатия',
+      text:`Без сжатия на ${DATA.N} символов ушло бы <b>${fixedTotal}</b> бит (по ${fixedBits} бит на символ), с кодом — <b>${totalBits}</b> бит. Коэффициент сжатия — <b>${ratio.toFixed(2)}</b>.`,
+      html:`<div class="kline"><span>${fixedTotal} бит</span><span class="op">÷</span><span>${totalBits} бит</span><span class="op">=</span><b class="ksum">${ratio.toFixed(2)}</b></div>`
+    });
+
+    const revMap = {};
+    list.forEach(e => { if(e.code !== undefined) revMap[e.code] = e.ch; });
+    let decoded = '', buf = '';
+    for(const bit of encoded){
+      buf += bit;
+      if(revMap[buf] !== undefined){ decoded += revMap[buf]; buf = ''; }
+    }
+    steps.push({
+      title:'Декодирование',
+      text:`Прочитали битовую строку по кодовому дереву и восстановили символы: <b>${decoded ? decoded.split('').map(esc).join(' ') : '—'}</b>.<span class="l">Префиксный код декодируется однозначно: ни одно слово не является началом другого.</span>`,
+      html:`<div class="code-src mono">${decoded ? decoded.split('').map(esc).join(' ') : '—'}</div>`
     });
   }
 

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сортировка структур по сложному ключу</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← Все разделы</a>
+  <span class="crumb">Сортировка структур</span>
+  <button class="theme" id="themeBtn" type="button" title="Сменить тему">☾</button>
+</header>
+<main>
+  <h1>Сортировка структур по сложному ключу</h1>
+  <p class="lead">Сортируем телефонный справочник — массив записей с несколькими полями. Ключ сортировки можно менять: по умолчанию это составной ключ «фамилия + имя», но можно выбрать любое поле и направление. Используется сортировка вставками (не пузырьковая).</p>
+
+  <section class="card">
+    <div class="row">
+      <div class="field">
+        <label for="key">Ключ сортировки</label>
+        <select id="key">
+          <option value="surname+name" selected>Фамилия + имя (сложный)</option>
+          <option value="surname">Фамилия</option>
+          <option value="name">Имя</option>
+          <option value="patronymic">Отчество</option>
+          <option value="phone">Телефон</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 1 180px">
+        <label for="dir">Направление</label>
+        <select id="dir">
+          <option value="asc" selected>По возрастанию</option>
+          <option value="desc">По убыванию</option>
+        </select>
+      </div>
+      <button class="p" id="go" type="button">Сортировать</button>
+    </div>
+    <div class="meta" style="margin-top:9px">Сортировка устойчивая: при равном ключе записи сохраняют исходный порядок. Сложный ключ сравнивает сначала фамилию, затем имя.</div>
+  </section>
+
+  <div id="stage"></div>
+
+  <details>
+    <summary>Что такое сложный (составной) ключ</summary>
+    <p>Сложный ключ состоит из нескольких полей, которые сравниваются по очереди: сначала старшее поле, при равенстве — следующее. Для справочника «фамилия + имя» сначала сравниваются фамилии; если они совпали, сравниваются имена. Это даёт привычный алфавитный порядок: все Ивановы идут подряд, а внутри — по имени.</p>
+  </details>
+
+  <details class="pseudo">
+    <summary>Псевдокод</summary>
+    <pre>Алгоритм: сортировка записей вставками по ключу
+  Вход: массив записей a, ключ key, направление dir
+
+  сравнить(x, y):
+      <span class="kw">для</span> каждого поля f ключа (фамилия, имя, …):
+          <span class="kw">если</span> x[f] &lt; y[f]: <span class="kw">вернуть</span> −1
+          <span class="kw">если</span> x[f] &gt; y[f]: <span class="kw">вернуть</span> +1
+      <span class="kw">вернуть</span> 0
+
+  <span class="kw">для</span> i от 1 до n−1:
+      key ← a[i]; j ← i−1
+      <span class="kw">пока</span> j ≥ 0 <span class="kw">и</span> сравнить(a[j], key)·dir &gt; 0:
+          a[j+1] ← a[j]; j ← j−1
+      a[j+1] ← key</pre>
+  </details>
+
+  <div id="quiz"></div>
+
+  <nav class="pager">
+    <a href="binary-search.html">← Бинарный поиск</a>
+    <a href="indexing.html">Индексация →</a>
+  </nav>
+</main>
+<script src="assets/core.js"></script>
+<script>
+(function(){
+  'use strict';
+  const S = window.TreeSite;
+  const $ = S.$;
+  let key = 'surname+name', dir = 'asc';
+  let steps = [];
+
+  const RECORDS = [
+    {surname:'Иванов',   name:'Иван',    patronymic:'Иванович',  phone:'+7 900 111-22-33'},
+    {surname:'Петров',   name:'Пётр',    patronymic:'Петрович',  phone:'+7 900 222-33-44'},
+    {surname:'Иванов',   name:'Алексей', patronymic:'Сергеевич', phone:'+7 900 333-44-55'},
+    {surname:'Сидоров',  name:'Сидор',   patronymic:'Сидорович', phone:'+7 900 444-55-66'},
+    {surname:'Кузнецов', name:'Николай', patronymic:'Кузьмич',   phone:'+7 900 555-66-77'}
+  ];
+
+  const FIELD = {surname:'Фамилия', name:'Имя', patronymic:'Отчество', phone:'Телефон'};
+
+  const player = S.mountPlayer($('stage'), {
+    autoplay: 1300,
+    render(canvas, step){
+      canvas.classList.add('compact');
+      canvas.innerHTML = step.html || '';
+    }
+  });
+
+  const esc = S.esc;
+  function renderTable(arr, o){
+    o = o || {};
+    const cmp = new Set(o.cmp || []), move = new Set(o.move || []), isNew = o.isNew, done = o.done;
+    let h = '<div class="table-wrap"><table class="cmp rec"><thead><tr><th>Фамилия</th><th>Имя</th><th>Отчество</th><th>Телефон</th></tr></thead><tbody>';
+    arr.forEach((r, i) => {
+      let cls = '';
+      if(isNew === i) cls = ' class="new"';
+      else if(cmp.has(i)) cls = ' class="cmp"';
+      else if(move.has(i)) cls = ' class="move"';
+      else if(done && i >= done) cls = ' class="done"';
+      h += `<tr${cls}><td class="k">${esc(r.surname)}</td><td>${esc(r.name)}</td><td>${esc(r.patronymic)}</td><td>${esc(r.phone)}</td></tr>`;
+    });
+    return h + '</tbody></table></div>';
+  }
+
+  function compare(a, b){
+    const fields = key === 'surname+name' ? ['surname', 'name'] : [key];
+    for(const f of fields){
+      const c = a[f].localeCompare(b[f], 'ru');
+      if(c !== 0) return {c, f};
+    }
+    return {c:0, f:null};
+  }
+
+  const add = (title, text, html) => steps.push({title, text, html});
+
+  function build(){
+    steps = [];
+    const arr = RECORDS.map(r => ({...r}));
+    add('Исходный справочник', `Сортируем справочник по ключу <b>«${key === 'surname+name' ? 'фамилия + имя' : FIELD[key]}»</b>, направление — <b>${dir === 'asc' ? 'по возрастанию' : 'по убыванию'}</b>.<span class="l">Метод — сортировка вставками (не пузырьковая). Устойчивая: при равном ключе порядок сохраняется.</span>`, renderTable(arr));
+
+    for(let i = 1; i < arr.length; i++){
+      const keyRec = arr[i];
+      let j = i - 1;
+      add(`Вставляем запись «${keyRec.surname} ${keyRec.name}»`, `Берём запись <b>«${esc(keyRec.surname)} ${esc(keyRec.name)}»</b> (позиция ${i}) и ищем ей место в уже упорядоченной левой части.`, renderTable(arr, {isNew:i}));
+      while(j >= 0){
+        const {c, f} = compare(arr[j], keyRec);
+        const cmpRes = c * (dir === 'asc' ? 1 : -1);
+        const before = cmpRes > 0;
+        add(`Сравнение «${arr[j].surname}» и «${keyRec.surname}»`, `Сравниваем <b>«${esc(arr[j].surname)} ${esc(arr[j].name)}»</b> и <b>«${esc(keyRec.surname)} ${esc(keyRec.name)}»</b>${f ? ` по полю «${FIELD[f]}»` : ''}: ${c < 0 ? 'первая меньше' : c > 0 ? 'первая больше' : 'равны'}. ${before ? 'Нужно сдвинуть вправо.' : 'Порядок верный — место найдено.'}`, renderTable(arr, {cmp:[j], isNew:i}));
+        if(!before) break;
+        arr[j + 1] = arr[j];
+        add('Сдвиг записи вправо', `Сдвигаем <b>«${esc(arr[j].surname)} ${esc(arr[j].name)}»</b> на позицию ${j + 1}.`, renderTable(arr, {move:[j + 1], isNew:i}));
+        j--;
+      }
+      arr[j + 1] = keyRec;
+      add(`Запись на месте ${j + 1}`, `Ставим <b>«${esc(keyRec.surname)} ${esc(keyRec.name)}»</b> на позицию ${j + 1}.<span class="l">Левая часть снова упорядочена.</span>`, renderTable(arr, {done:j + 1}));
+    }
+
+    add('Справочник отсортирован', `Готово. Итоговый порядок: <b>${arr.map(r => esc(r.surname) + ' ' + esc(r.name)).join(' → ')}</b>.`, renderTable(arr));
+    player.setSteps(steps);
+  }
+
+  $('go').onclick = build;
+  $('key').onchange = build;
+  $('dir').onchange = build;
+  build();
+
+  S.mountQuiz($('quiz'), {
+    title: 'Проверь себя',
+    intro: 'Три вопроса о сортировке структур по сложному ключу.',
+    questions: [
+      { q: 'Что такое сложный (составной) ключ?', options: ['Несколько полей, сравниваемых по очереди', 'Одно поле записи', 'Случайное поле'], answer: 0, why: 'Сложный ключ — несколько полей: сначала старшее, при равенстве — следующее. Здесь «фамилия + имя».' },
+      { q: 'Почему сортировка вставками подходит для составного ключа?', options: ['Она устойчивая', 'Она самая быстрая', 'Она не сравнивает поля'], answer: 0, why: 'Вставки — устойчивый метод: записи с равным ключом сохраняют исходный порядок, что важно для многоуровневой сортировки.' },
+      { q: 'При ключе «фамилия + имя» две записи с одинаковой фамилией…', options: ['Упорядочиваются по имени', 'Считаются равными', 'Удаляются'], answer: 0, why: 'Сначала сравнивается фамилия, а при равенстве — имя: однофамильцы встают по алфавиту имён.' }
+    ]
+  });
+})();
+</script>
+</body>
+</html>
