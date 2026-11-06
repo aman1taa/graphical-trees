@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Обходы двоичного дерева</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="trees.html">← Все деревья</a>
+  <span class="crumb">Обходы дерева</span>
+  <button class="theme" id="themeBtn" type="button" title="Сменить тему">☾</button>
+</header>
+<main>
+  <h1>Обходы двоичного дерева</h1>
+  <p class="lead">Три способа обойти все вершины дерева: сверху вниз (прямой), слева направо (симметричный) и снизу вверх (обратный). Для каждого обхода показывается порядок посещения вершин, а ниже — размер, контрольная сумма, высота и средняя глубина дерева.</p>
+
+  <section class="card">
+    <div class="row">
+      <div class="field">
+        <label for="inp">Буквы в порядке вставки</label>
+        <input id="inp" value="KDBACFGE" autocomplete="off" spellcheck="false" placeholder="Например: KDBACFGE">
+      </div>
+      <button class="p" id="go" type="button">Построить</button>
+      <button id="ex" type="button">Пример</button>
+    </div>
+    <div class="meta" style="margin-top:9px">Дерево строится как дерево поиска (вставка по коду символа). Повторяющиеся буквы пропускаются. До 24 ключей.</div>
+  </section>
+
+  <div class="row tabs wrap" id="travTabs" role="tablist" aria-label="Тип обхода">
+    <button type="button" class="tab on" data-trav="pre">Сверху вниз (прямой)</button>
+    <button type="button" class="tab" data-trav="in">Слева направо (симметричный)</button>
+    <button type="button" class="tab" data-trav="post">Снизу вверх (обратный)</button>
+  </div>
+
+  <div class="stats" id="treeStats"></div>
+
+  <div id="stage"></div>
+
+  <details>
+    <summary>Чем отличаются три обхода</summary>
+    <p><b>Прямой (сверху вниз, preorder).</b> Сначала посещается сама вершина, затем левое поддерево, затем правое. Порядок: корень → лево → право.</p>
+    <p><b>Симметричный (слева направо, inorder).</b> Сначала левое поддерево, затем вершина, затем правое. Для дерева поиска даёт ключи по возрастанию.</p>
+    <p><b>Обратный (снизу вверх, postorder).</b> Сначала левое поддерево, затем правое, и только потом сама вершина. Удобен, когда сначала нужно обработать потомков (например, при удалении дерева).</p>
+  </details>
+
+  <details>
+    <summary>Как считаются характеристики дерева</summary>
+    <p><b>Размер</b> — число вершин. <b>Контрольная сумма</b> — сумма кодов символов всех вершин. <b>Высота</b> — длина самой длинной ветви (в рёбрах). <b>Средняя глубина</b> — среднее расстояние от корня до вершины.</p>
+  </details>
+
+  <details class="pseudo">
+    <summary>Псевдокод</summary>
+    <pre>Прямой обход (сверху вниз, preorder):
+  <span class="kw">если</span> узел пуст: <span class="kw">вернуть</span>
+  посетить узел
+  прямой(левый);  прямой(правый)
+
+Симметричный обход (слева направо, inorder):
+  <span class="kw">если</span> узел пуст: <span class="kw">вернуть</span>
+  симметричный(левый)
+  посетить узел
+  симметричный(правый)
+
+Обратный обход (снизу вверх, postorder):
+  <span class="kw">если</span> узел пуст: <span class="kw">вернуть</span>
+  обратный(левый);  обратный(правый)
+  посетить узел</pre>
+  </details>
+
+  <div id="quiz"></div>
+
+  <nav class="pager">
+    <a href="trees.html">← Все деревья</a>
+    <a href="isdp.html">ИСДП →</a>
+  </nav>
+</main>
+<script src="assets/core.js"></script>
+<script>
+(function(){
+  'use strict';
+  const S = window.TreeSite;
+  const $ = S.$;
+  let root = null, seq = 0, idMap = {}, keys = [];
+  let trav = 'pre';
+  const mk = d => ({id:++seq, d, l:null, r:null});
+
+  const TRAV = {
+    pre:  {name:'Прямой (сверху вниз)', visit:'сначала вершина, затем левое и правое поддеревья'},
+    in:   {name:'Симметричный (слева направо)', visit:'сначала левое поддерево, затем вершина, затем правое'},
+    post: {name:'Обратный (снизу вверх)', visit:'сначала оба поддерева, затем сама вершина'}
+  };
+
+  const player = S.mountPlayer($('stage'), {
+    legend: '<span><i class="dot" style="background:var(--ok)"></i>текущая вершина</span><span><i class="dot" style="background:var(--ac)"></i>уже посещённые</span>',
+    render(canvas, step){
+      canvas.classList.toggle('compact', !step.tree);
+      canvas.innerHTML = (step.strip || '') + '<div class="tree-host"></div>';
+      S.renderBinary(canvas.querySelector('.tree-host'), step, {showBal:false});
+    }
+  });
+
+  function insert(ch){
+    if(!root){ root = mk(ch); return; }
+    let t = root;
+    while(true){
+      if(ch === t.d) return;
+      const dir = ch < t.d ? -1 : 1;
+      const next = dir < 0 ? t.l : t.r;
+      if(!next){ const n = mk(ch); if(dir < 0) t.l = n; else t.r = n; return; }
+      t = next;
+    }
+  }
+
+  function preorder(n, out){ if(!n) return; out.push(n.id); preorder(n.l, out); preorder(n.r, out); }
+  function inorder(n, out){ if(!n) return; inorder(n.l, out); out.push(n.id); inorder(n.r, out); }
+  function postorder(n, out){ if(!n) return; postorder(n.l, out); postorder(n.r, out); out.push(n.id); }
+  const ORDERS = {pre:preorder, in:inorder, post:postorder};
+
+  function build(){
+    const parsed = S.parseKeys($('inp').value, 24);
+    keys = parsed.keys;
+    seq = 0; root = null; idMap = {};
+    const steps = [];
+    if(!keys.length){
+      player.setSteps([{title:'Пусто', text:'Введите хотя бы одну букву.', tree:null}]);
+      $('treeStats').innerHTML = '';
+      return;
+    }
+    keys.forEach(insert);
+    keys.forEach(k => { (function w(n){ if(!n) return; idMap[n.id] = n.d; w(n.l); w(n.r); })(root); });
+
+    const orderIds = []; ORDERS[trav](root, orderIds);
+    const orderKeys = orderIds.map(id => idMap[id]);
+    const items = orderKeys.map((k, i) => ({k, w:i}));
+
+    let size = 0, checksum = 0;
+    (function w(n){ if(!n) return; size++; checksum += S.code(n.d); w(n.l); w(n.r); })(root);
+    const h = S.height(root);
+    const avg = S.avgDepth(root);
+    $('treeStats').innerHTML = `<div class="stat"><b>${size}</b><span>размер (вершин)</span></div><div class="stat"><b>${checksum}</b><span>контрольная сумма</span></div><div class="stat"><b>${h}</b><span>высота</span></div><div class="stat"><b>${avg.toFixed(2)}</b><span>средняя глубина</span></div>`;
+
+    steps.push({
+      title:`Обход: ${TRAV[trav].name}`,
+      text:`Дерево построено вставкой в порядке <b>${keys.map(S.esc).join(' → ')}</b>. Обходим его по правилу «${TRAV[trav].visit}». Порядок посещения будем накапливать ниже.<span class="l">Зелёная вершина — текущая, синие — уже посещённые.</span>`,
+      strip:S.strip(items),
+      tree:S.clone(root),
+      path:[]
+    });
+
+    orderIds.forEach((id, k) => {
+      steps.push({
+        title:`Шаг ${k + 1}: вершина «${idMap[id]}»`,
+        text:`Посещаем вершину «<b>${S.esc(idMap[id])}</b>». Уже обойдено ${k + 1} из ${orderIds.length}.<span class="l">Порядок: ${orderKeys.slice(0, k + 1).map(S.esc).join(' → ')}</span>`,
+        strip:S.strip(items, {mid:k, done:Array.from({length:k}, (_, i) => i)}),
+        tree:S.clone(root),
+        newId:id,
+        path:orderIds.slice(0, k)
+      });
+    });
+
+    steps.push({
+      title:'Обход завершён',
+      text:`Итоговый порядок посещения: <b>${orderKeys.map(S.esc).join(' → ')}</b>.<span class="l">${trav === 'in' ? 'Для дерева поиска симметричный обход всегда даёт ключи по возрастанию.' : 'Порядок зависит от способа обхода: каждый из трёх вариантов задаёт свою последовательность.'}</span>`,
+      strip:S.strip(items, {done:orderKeys.map((_, i) => i)}),
+      tree:S.clone(root),
+      path:orderIds
+    });
+
+    player.setSteps(steps);
+  }
+
+  $('travTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-trav]');
+    if(!b) return;
+    trav = b.dataset.trav;
+    [...$('travTabs').querySelectorAll('.tab')].forEach(x => x.classList.toggle('on', x === b));
+    build();
+  });
+  $('go').onclick = build;
+  $('ex').onclick = () => { $('inp').value = S.randLetters([6, 10]); build(); };
+  $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  $('inp').value = S.randLetters([6, 10]);
+  build();
+
+  S.mountQuiz($('quiz'), {
+    title: 'Проверь себя',
+    intro: 'Четыре вопроса об обходах двоичного дерева.',
+    questions: [
+      { q: 'Прямой обход (сверху вниз) посещает вершину…', options: ['До поддеревьев (корень → лево → право)', 'Между поддеревьями', 'После поддеревьев'], answer: 0, why: 'В прямом (preorder) обходе вершина посещается первой, затем левое и правое поддеревья.' },
+      { q: 'Симметричный обход дерева поиска даёт…', options: ['Ключи по возрастанию', 'Ключи по убыванию', 'Случайный порядок'], answer: 0, why: 'Симметричный (inorder) обход дерева поиска перечисляет ключи в порядке возрастания.' },
+      { q: 'Обратный обход (снизу вверх) посещает корень…', options: ['Первым', 'В середине', 'В конце'], answer: 2, why: 'В обратном (postorder) обходе вершина посещается последней — после обоих поддеревьев.' },
+      { q: 'Что такое контрольная сумма дерева?', options: ['Сумма значений вершин', 'Число вершин', 'Высота дерева'], answer: 0, why: 'Контрольная сумма — сумма значений (здесь кодов символов) всех вершин дерева.' }
+    ]
+  });
+})();
+</script>
+</body>
+</html>

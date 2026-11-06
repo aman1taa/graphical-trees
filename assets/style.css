@@ -425,6 +425,30 @@ input[type=radio],input[type=checkbox]{accent-color:var(--ac)}
 .quiz-actions{display:flex;gap:9px;align-items:center;margin-top:16px;flex-wrap:wrap}
 .score{font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums}
 
+/* ---------- Списки: стек, очередь, список ---------- */
+.vstack{display:flex;flex-direction:column-reverse;align-items:center;gap:4px;padding:8px;min-height:70px}
+.vstack .vbox{border:1px solid var(--bd);border-radius:8px;background:var(--node);padding:6px 22px;font-weight:600;font-size:16px;min-width:44px;text-align:center}
+.vstack .vbox.new{background:var(--ok);border-color:var(--ok);color:#fff}
+.vstack .vbox.top{border-color:var(--ac);outline:2px solid var(--ac);outline-offset:1px}
+.qline{display:flex;gap:4px;flex-wrap:wrap;align-items:center;min-height:70px;padding:8px}
+.qline .qbox{border:1px solid var(--bd);border-radius:8px;background:var(--node);padding:6px 16px;font-weight:600;font-size:16px;min-width:40px;text-align:center}
+.qline .qbox.new{background:var(--ok);border-color:var(--ok);color:#fff}
+.qline .qbox.front{border-color:var(--ac);outline:2px solid var(--ac);outline-offset:1px}
+.llist{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px}
+.llist .lnode{border:1px solid var(--bd);border-radius:8px;background:var(--node);padding:6px 16px;font-weight:600;font-size:16px;min-width:40px;text-align:center}
+.llist .lnode.new{background:var(--ok);border-color:var(--ok);color:#fff}
+.llist .lnode.cur{border-color:var(--ac);outline:2px solid var(--ac);outline-offset:1px}
+.llist .larr{color:var(--mut);font-weight:700}
+.stack-caption{text-align:center;color:var(--mut);font-size:12.5px;margin-top:4px}
+
+/* ---------- Сортировка структур (записей) ---------- */
+table.rec tr td{text-align:left}
+table.rec tr.cmp td{background:var(--acsoft)}
+table.rec tr.move td{background:var(--badsoft)}
+table.rec tr.new td{background:var(--oksoft)}
+table.rec tr.done td{background:var(--node)}
+table.rec .k{font-weight:600;color:var(--tx)}
+
 @media(max-width:820px){
   .sort-layout{grid-template-columns:1fr}
   .meter-box{position:static;order:-1}
