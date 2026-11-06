@@ -43,6 +43,29 @@
     </div>
   </div>
 
+  <details class="pseudo">
+    <summary>Псевдокод</summary>
+    <pre>Алгоритм: вставка в АВЛ-дерево (add_avl)
+  Вход: ключ k, поддерево p
+
+  <span class="kw">если</span> p пусто: <span class="kw">вернуть</span> новый_узел(k, bal = 0)
+
+  <span class="kw">если</span> k &lt; key(p): p.левый ← add_avl(k, p.левый)
+  <span class="kw">иначе если</span> k &gt; key(p): p.правый ← add_avl(k, p.правый)
+
+  пересчитать bal(p) = h(правого) − h(левого)
+
+  <span class="kw">если</span> bal(p) = −2:                <span class="cm">// перевес влево</span>
+      <span class="kw">если</span> bal(p.левый) &lt; 0: правый поворот LL
+      <span class="kw">иначе</span>: двойной LR (левый вокруг Q, затем правый)
+  <span class="kw">если</span> bal(p) = +2:                <span class="cm">// перевес вправо</span>
+      <span class="kw">если</span> bal(p.правый) &gt; 0: левый поворот RR
+      <span class="kw">иначе</span>: двойной RL (правый вокруг Q, затем левый)
+  <span class="kw">вернуть</span> p</pre>
+  </details>
+
+  <div id="quiz"></div>
+
   <nav class="pager">
     <a href="sdp.html">← СДП</a>
     <a href="avl-delete.html">Удаление из АВЛ-дерева →</a>
@@ -327,6 +350,17 @@
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('inp').value = S.randLetters([6, 10]);
   build();
+
+  S.mountQuiz($('quiz'), {
+    title: 'Проверь себя',
+    intro: 'Четыре вопроса о балансировке АВЛ-дерева.',
+    questions: [
+      { q: 'Как на этой странице считается баланс узла?', options: ['bal = h(правого) − h(левого)', 'bal = h(левого) − h(правого)', 'bal = число потомков'], answer: 0, why: 'Баланс — это высота правого поддерева минус высота левого: bal = h(правого) − h(левого).' },
+      { q: 'Когда нужен поворот?', options: ['Когда bal = 0', 'Когда |bal| = 2', 'После каждой вставки'], answer: 1, why: 'Поворот выполняется, как только баланс вышел за пределы ±1, то есть стал равен ±2.' },
+      { q: 'Случай LL (перевес влево-влево) лечится…', options: ['Одним правым поворотом', 'Одним левым поворотом', 'Двойным поворотом'], answer: 0, why: 'LL — «прямой» случай: достаточно одного правого поворота вокруг P.' },
+      { q: 'Какая максимальная высота АВЛ-дерева?', options: ['n', '≈ 1.44·log₂(n+2)', 'log₂ n'], answer: 1, why: 'АВЛ-дерево сбалансировано: его высота не превышает 1.44·log₂(n+2).' }
+    ]
+  });
 })();
 </script>
 </body>

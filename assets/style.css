@@ -398,6 +398,33 @@ table.ctable tr.cur td:first-child{box-shadow:inset 2px 0 0 var(--ac)}
 .mpair-cap{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:4px 0 2px}
 .mpair svg{display:block}
 
+/* ---------- Псевдокод ---------- */
+details.pseudo{margin-top:14px}
+.pseudo pre{margin:10px 0 2px;padding:14px 16px;overflow-x:auto;background:var(--bg);border:1px solid var(--bd);border-radius:10px;font:13.5px/1.7 var(--font-mono);color:var(--tx);white-space:pre;tab-size:2}
+.pseudo pre .kw{color:var(--ac);font-weight:600}
+.pseudo pre .cm{color:var(--mut)}
+
+/* ---------- Мини-тест ---------- */
+input[type=radio],input[type=checkbox]{accent-color:var(--ac)}
+.quiz{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:18px 20px;margin:16px 0;box-shadow:var(--shadow-sm)}
+.quiz h2{font-size:19px;margin:0 0 4px}
+.quiz-intro{color:var(--mut);font-size:13.5px;margin:0 0 16px}
+.quiz-form{display:grid;gap:16px}
+.q{border:0;padding:0;margin:0;min-width:0}
+.q legend{font-size:14.5px;font-weight:600;color:var(--tx);padding:0;margin-bottom:7px}
+.q .qn{color:var(--ac);margin-right:3px}
+.opt{display:flex;gap:9px;align-items:flex-start;padding:8px 11px;border:1px solid var(--bd);border-radius:8px;margin:5px 0;cursor:pointer;font-size:14px;line-height:1.45;transition:border-color .12s,background .12s}
+.opt:hover{border-color:var(--bd-strong);background:var(--bg)}
+.opt input{margin-top:2px;width:auto;flex:0 0 auto}
+.opt.ok{border-color:var(--ok);background:var(--oksoft)}
+.opt.bad{border-color:var(--bad);background:var(--badsoft)}
+.explain{margin-top:8px;font-size:13px;line-height:1.55;color:var(--mut)}
+.explain.ok{color:var(--ok)}
+.explain.bad{color:var(--bad)}
+.explain b{font-weight:600}
+.quiz-actions{display:flex;gap:9px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.score{font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums}
+
 @media(max-width:820px){
   .sort-layout{grid-template-columns:1fr}
   .meter-box{position:static;order:-1}

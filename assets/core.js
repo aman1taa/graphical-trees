@@ -384,4 +384,72 @@
     TS.renderBinary(canvas.querySelector('.tree-host'), step, opts);
   };
 
+  /* ---------- Мини-тест (викторина с самопроверкой) ---------- */
+  TS.mountQuiz = function(el, cfg){
+    cfg = cfg || {};
+    const qs = cfg.questions || [];
+    let html = '<div class="quiz">'
+      + '<h2>' + (cfg.title || 'Проверь себя') + '</h2>'
+      + (cfg.intro ? '<p class="quiz-intro">' + cfg.intro + '</p>' : '')
+      + '<div class="quiz-form">';
+    qs.forEach((q, i) => {
+      html += '<fieldset class="q" data-ans="' + q.answer + '">'
+        + '<legend><span class="qn">' + (i + 1) + '.</span> ' + q.q + '</legend>';
+      q.options.forEach((opt, j) => {
+        html += '<label class="opt"><input type="radio" name="qq' + i + '" value="' + j + '"><span>' + opt + '</span></label>';
+      });
+      html += '<div class="explain" hidden><span class="why">' + (q.why || '') + '</span></div></fieldset>';
+    });
+    html += '</div>'
+      + '<div class="quiz-actions"><button type="button" class="p" data-act="check">Проверить</button>'
+      + '<button type="button" data-act="reset">Сбросить</button>'
+      + '<span class="score" hidden></span></div></div>';
+    el.innerHTML = html;
+
+    const root = el.querySelector('.quiz');
+    const checkBtn = root.querySelector('[data-act="check"]');
+    const resetBtn = root.querySelector('[data-act="reset"]');
+    const scoreEl = root.querySelector('.score');
+    const fieldsets = Array.from(root.querySelectorAll('fieldset.q'));
+
+    function reset(){
+      fieldsets.forEach(fs => {
+        fs.querySelectorAll('input').forEach(inp => { inp.checked = false; inp.disabled = false; });
+        fs.querySelectorAll('.opt').forEach(o => o.classList.remove('ok', 'bad'));
+        const ex = fs.querySelector('.explain');
+        ex.hidden = true; ex.classList.remove('ok', 'bad');
+      });
+      scoreEl.hidden = true;
+      checkBtn.disabled = false;
+    }
+
+    checkBtn.addEventListener('click', () => {
+      let correct = 0;
+      fieldsets.forEach(fs => {
+        const ans = +fs.dataset.ans;
+        const sel = fs.querySelector('input:checked');
+        const opts = Array.from(fs.querySelectorAll('.opt'));
+        const ex = fs.querySelector('.explain');
+        const why = (fs.querySelector('.why') || {}).innerHTML || '';
+        let isRight = false;
+        opts.forEach(o => o.classList.remove('ok', 'bad'));
+        if(sel){
+          isRight = +sel.value === ans;
+          opts[+sel.value].classList.add(isRight ? 'ok' : 'bad');
+        }
+        if(isRight) correct++; else opts[ans].classList.add('ok');
+        fs.querySelectorAll('input').forEach(inp => inp.disabled = true);
+        ex.hidden = false;
+        ex.classList.toggle('ok', isRight);
+        ex.classList.toggle('bad', !isRight);
+        ex.innerHTML = '<b>' + (isRight ? 'Верно.' : 'Неверно.') + '</b> ' + why;
+      });
+      scoreEl.hidden = false;
+      scoreEl.textContent = 'Верно: ' + correct + ' из ' + fieldsets.length;
+      checkBtn.disabled = true;
+    });
+
+    resetBtn.addEventListener('click', reset);
+  };
+
 })();

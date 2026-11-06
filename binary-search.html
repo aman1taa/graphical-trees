@@ -71,6 +71,28 @@ return lo;</pre>
     <p>После каждого сравнения остаётся не более половины текущего диапазона. Количество шагов не превышает <code>⌈log₂(n + 1)⌉</code>, поэтому для 1000 элементов достаточно около 10 сравнений. Массив должен быть отсортирован — иначе отсечение половины не работает.</p>
   </details>
 
+  <details class="pseudo">
+    <summary>Псевдокод</summary>
+    <pre>Тип 1: точное вхождение
+  lo ← 0; hi ← n−1
+  <span class="kw">пока</span> lo ≤ hi:
+      mid ← (lo + hi) / 2
+      <span class="kw">если</span> a[mid] = x: <span class="kw">вернуть</span> mid
+      <span class="kw">если</span> a[mid] &lt; x: lo ← mid + 1
+      <span class="kw">иначе</span>: hi ← mid − 1
+  <span class="kw">вернуть</span> −1
+
+Тип 2: позиция вставки (lower bound)
+  lo ← 0; hi ← n
+  <span class="kw">пока</span> lo &lt; hi:
+      mid ← (lo + hi) / 2
+      <span class="kw">если</span> a[mid] &lt; x: lo ← mid + 1
+      <span class="kw">иначе</span>: hi ← mid
+  <span class="kw">вернуть</span> lo</pre>
+  </details>
+
+  <div id="quiz"></div>
+
   <nav class="pager">
     <a href="sort.html">← Сортировки</a>
     <a href="indexing.html">Индексация →</a>
@@ -200,6 +222,17 @@ return lo;</pre>
   $('target').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   { const a = S.randLetters(9).split('').sort().join(''); $('inp').value = a; $('target').value = Math.random() < .7 ? a[Math.floor(Math.random() * a.length)] : S.randLetters(1); }
   build();
+
+  S.mountQuiz($('quiz'), {
+    title: 'Проверь себя',
+    intro: 'Четыре вопроса о бинарном поиске.',
+    questions: [
+      { q: 'Обязательное условие для бинарного поиска?', options: ['Массив отсортирован', 'Массив из букв', 'Массив без повторов'], answer: 0, why: 'Бинарный поиск отбрасывает половину диапазона — это работает только на отсортированном массиве.' },
+      { q: 'Тип 2 (lower bound) возвращает…', options: ['Точный индекс x', 'Первое место, где элемент ≥ x', 'Всегда −1'], answer: 1, why: 'Lower bound — первое место, где элемент не меньше искомого; это позиция вставки, сохраняющая порядок.' },
+      { q: 'Какова сложность бинарного поиска?', options: ['O(n)', 'O(log n)', 'O(n log n)'], answer: 1, why: 'После каждого сравнения остаётся не более половины диапазона — O(log n) сравнений.' },
+      { q: 'Что делает тип 1, если элемента нет?', options: ['Возвращает −1', 'Вставляет элемент', 'Возвращает n'], answer: 0, why: 'Когда диапазон становится пустым (lo &gt; hi), тип 1 возвращает −1: элемента в массиве нет.' }
+    ]
+  });
 })();
 </script>
 </body>
