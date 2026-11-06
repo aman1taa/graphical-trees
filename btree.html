@@ -20,7 +20,7 @@
     <div class="row">
       <div class="field">
         <label for="inp">Буквы в порядке вставки</label>
-        <input id="inp" value="QWERTYUIOP" autocomplete="off" spellcheck="false" placeholder="Например: QWERTYUIOP">
+        <input id="inp" value="ABCDEFGHIJ" autocomplete="off" spellcheck="false" placeholder="Например: ABCDEFGHIJ">
       </div>
       <button class="p" id="go" type="button">Построить</button>
       <button id="ex" type="button">Пример</button>
@@ -200,8 +200,9 @@
   }
 
   $('go').onclick = build;
-  $('ex').onclick = () => { $('inp').value = 'ABCDEFG'; build(); };
+  $('ex').onclick = () => { $('inp').value = S.randLetters([9, 12]); build(); };
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  $('inp').value = S.randLetters([9, 12]);
   build();
 })();
 </script>

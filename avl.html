@@ -320,8 +320,9 @@
   }
 
   $('go').onclick = build;
-  $('ex').onclick = () => { $('inp').value = 'KDBACFGE'; build(); };
+  $('ex').onclick = () => { $('inp').value = S.randLetters([6, 10]); build(); };
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  $('inp').value = S.randLetters([6, 10]);
   build();
 })();
 </script>

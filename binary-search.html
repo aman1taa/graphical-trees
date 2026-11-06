@@ -195,6 +195,7 @@ return lo;</pre>
   $('go').onclick = build;
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('target').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  { const a = S.randLetters(9).split('').sort().join(''); $('inp').value = a; $('target').value = Math.random() < .7 ? a[Math.floor(Math.random() * a.length)] : S.randLetters(1); }
   build();
 })();
 </script>

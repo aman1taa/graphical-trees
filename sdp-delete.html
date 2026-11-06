@@ -191,6 +191,7 @@
   $('go').onclick = build;
   $('inp').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
   $('del').addEventListener('keydown', e => { if(e.key === 'Enter') build(); });
+  { const k = S.randLetters([7, 10]); $('inp').value = k; $('del').value = S.randLetters(2, {pool:k, sep:' '}); }
   build();
 })();
 </script>

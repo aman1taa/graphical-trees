@@ -5,6 +5,16 @@
 
   TS.$ = id => document.getElementById(id);
   TS.esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  TS.randLetters = function(n, o){
+    o = o || {};
+    if(Array.isArray(n)) n = n[0] + Math.floor(Math.random() * (n[1] - n[0] + 1));
+    const pool = String(o.pool || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ').split('');
+    for(let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, n).join(o.sep || '');
+  };
   TS.fmtBal = b => b > 0 ? '+' + b : b < 0 ? '−' + (-b) : '0';
 
   TS.height = function height(n){
