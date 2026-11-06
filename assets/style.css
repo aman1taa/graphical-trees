@@ -19,28 +19,28 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#191713;--card:#211E19;--tx:#ECE8DE;--mut:#9B9489;--bd:#37332B;--bd-strong:#4A453A;
-    --ac:#E0855E;--ac-2:#EF9D76;--on-ac:#241C12;--acsoft:#392B22;
-    --ok:#68A976;--oksoft:#223027;
-    --bad:#DE7A6C;--badsoft:#382521;
-    --warn:#D2A647;--warnsoft:#38301F;
-    --vio:#5AA29C;--viosoft:#213331;
-    --node:#2A2722;--node2:#333028;
-    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
-    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    --bg:#101214;--card:#181B1F;--tx:#E8EAED;--mut:#8B949E;--bd:#2A2F36;--bd-strong:#39414B;
+    --ac:#D97757;--ac-2:#C15F3C;--on-ac:#FFFFFF;--acsoft:#2A211D;
+    --ok:#5FA06E;--oksoft:#1D2A22;
+    --bad:#D06057;--badsoft:#2E201E;
+    --warn:#D0A24A;--warnsoft:#2E281A;
+    --vio:#57A09A;--viosoft:#1D2A28;
+    --node:#21262C;--node2:#2A3038;
+    --shadow:0 1px 2px rgba(0,0,0,.45),0 8px 24px rgba(0,0,0,.4);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#191713;--card:#211E19;--tx:#ECE8DE;--mut:#9B9489;--bd:#37332B;--bd-strong:#4A453A;
-  --ac:#E0855E;--ac-2:#EF9D76;--on-ac:#241C12;--acsoft:#392B22;
-  --ok:#68A976;--oksoft:#223027;
-  --bad:#DE7A6C;--badsoft:#382521;
-  --warn:#D2A647;--warnsoft:#38301F;
-  --vio:#5AA29C;--viosoft:#213331;
-  --node:#2A2722;--node2:#333028;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
-  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --bg:#101214;--card:#181B1F;--tx:#E8EAED;--mut:#8B949E;--bd:#2A2F36;--bd-strong:#39414B;
+  --ac:#D97757;--ac-2:#C15F3C;--on-ac:#FFFFFF;--acsoft:#2A211D;
+  --ok:#5FA06E;--oksoft:#1D2A22;
+  --bad:#D06057;--badsoft:#2E201E;
+  --warn:#D0A24A;--warnsoft:#2E281A;
+  --vio:#57A09A;--viosoft:#1D2A28;
+  --node:#21262C;--node2:#2A3038;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 8px 24px rgba(0,0,0,.4);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
   color-scheme:dark;
 }
 
@@ -129,9 +129,9 @@ button:disabled{opacity:.4;cursor:default}
 .scrub:focus-visible{outline:2px solid var(--acsoft);border-radius:999px}
 
 /* Выпадающие списки в тёмной теме */
-:root[data-theme="dark"] option{background:#211E19;color:#ECE8DE}
-:root[data-theme="dark"] option:checked{background:#3A342B;color:#fff}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) option{background:#211E19;color:#ECE8DE}:root:not([data-theme="light"]) option:checked{background:#3A342B;color:#fff}}
+:root[data-theme="dark"] option{background:#181B1F;color:#E8EAED}
+:root[data-theme="dark"] option:checked{background:#39414B;color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) option{background:#181B1F;color:#E8EAED}:root:not([data-theme="light"]) option:checked{background:#39414B;color:#fff}}
 
 .canvas{overflow-x:auto;min-height:200px;padding:4px 0 2px;overscroll-behavior-x:contain}
 .canvas.compact{min-height:0;padding-bottom:0}
