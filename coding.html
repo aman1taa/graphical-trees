@@ -398,12 +398,12 @@
     const labeled = chars.map(ch => {
       const k = (seen.get(ch) || 0) + 1;
       seen.set(ch, k);
-      return ch + (k > 1 ? '′'.repeat(k - 1) : '');
+      return esc(ch) + (k > 1 ? '<span class="pr">' + '′'.repeat(k - 1) + '</span>' : '');
     });
     steps.push({
       title:'Исходный набор',
-      text:`Набор: <b>${esc(labeled.join(' '))}</b> — ${N} символов, из них различных: <b>${entries.length}</b>. Повторяющиеся символы помечены штрихами: второе вхождение — ′, третье — ′′ и так далее.<span class="l">Частота каждого символа даёт оценку вероятности: p<sub>i</sub> = n<sub>i</sub>/${N} с округлением до двух знаков.</span>`,
-      html:`<div class="code-src mono">${esc(labeled.join(' '))}</div>`
+      text:`Набор: <b>${labeled.join(' ')}</b> — ${N} символов, из них различных: <b>${entries.length}</b>. Повторяющиеся символы помечены штрихами: второе вхождение — ′, третье — ′′ и так далее.<span class="l">Частота каждого символа даёт оценку вероятности: p<sub>i</sub> = n<sub>i</sub>/${N} с округлением до двух знаков.</span>`,
+      html:`<div class="code-src mono">${labeled.join(' ')}</div>`
     });
     steps.push({
       title:'Вероятности символов',
@@ -578,7 +578,7 @@
     const entries = [...countMap.entries()].map(([ch, n], i) => {
       const p = Math.round(n * 100 / N) / 100;
       const occ = n > 1
-        ? `<i class="occ">${esc(ch)}${Array.from({length: n - 1}, (_, k) => ' ' + esc(ch) + '′'.repeat(k + 1)).join('')}</i>`
+        ? `<i class="occ">${esc(ch)}${Array.from({length: n - 1}, (_, k) => ' ' + esc(ch) + '<span class="pr">' + '′'.repeat(k + 1) + '</span>').join('')}</i>`
         : '';
       return {ch, n, p, i, occ, log:-Math.log2(p)};
     });

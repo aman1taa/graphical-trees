@@ -23,6 +23,19 @@
     return {chars:out, dups, total:chars.length};
   };
 
+  /* Подпись элемента: штрихи дубликатов (A′, A″) рисуем мелко и вплотную к букве. */
+  TS.fmtLabel = function(ch){
+    const m = /^(.*?)(′+)$/.exec(String(ch));
+    return m ? TS.esc(m[1]) + '<span class="pr">' + m[2] + '</span>' : TS.esc(ch);
+  };
+  /* Номера букв в алфавите, если все буквы из одного алфавита (латиница или кириллица); иначе null. */
+  TS.alphaPos = function(arr){
+    const ALPHAS = ['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'];
+    const base = arr.map(c => String(c).replace(/′+$/, '').toUpperCase());
+    for(const A of ALPHAS) if(base.every(b => b.length === 1 && A.indexOf(b) >= 0)) return base.map(b => A.indexOf(b) + 1);
+    return null;
+  };
+
   /* Столбики: шаг сортировки. */
   TS.renderSortStep = function(el, step){
     if(!step || !step.arr || !step.arr.length){
@@ -37,6 +50,7 @@
     const move = new Set(step.move || []);
     const done = new Set(step.done || []);
     const tags = step.tags || {};
+    const alpha = TS.alphaPos(arr);
     let bars = '';
     arr.forEach((ch, i) => {
       const h = 36 + Math.round((TS.code(ch) - lo) / span * 150);
@@ -45,7 +59,7 @@
       if(move.has(i)) cls += ' move';
       if(done.has(i)) cls += ' done';
       if(step.pivot === i) cls += ' pivot';
-      bars += `<div class="${cls}">${tags[i] ? `<span class="tag">${TS.esc(tags[i])}</span>` : ''}<div class="col" style="height:${h}px"><b>${TS.esc(ch)}</b></div><span class="ix">${i}</span></div>`;
+      bars += `<div class="${cls}">${tags[i] ? `<span class="tag">${TS.esc(tags[i])}</span>` : ''}<div class="col" style="height:${h}px"><b>${TS.fmtLabel(ch)}</b></div><span class="ix">${alpha ? alpha[i] : i}</span></div>`;
     });
     let h = `<div class="bars">${bars}</div>`;
     if(step.caption) h += `<div class="bars-caption">${step.caption}</div>`;

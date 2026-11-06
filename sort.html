@@ -25,7 +25,7 @@
       <button class="p" id="go" type="button">Построить</button>
       <button id="ex" type="button">Пример</button>
     </div>
-    <div class="meta" style="margin-top:9px">До 16 символов, повторы разрешены. Порядок сравнивается по коду символа.</div>
+    <div class="meta" style="margin-top:9px">До 16 символов. Буквы приводятся к заглавным, повторы получают штрихи по порядку появления: A, A′, A″ — по ключу они равны, но так видно, сохраняется ли их порядок. Под столбиками — номер буквы в алфавите.</div>
   </section>
 
   <div class="row tabs wrap" id="algoTabs" role="tablist" aria-label="Алгоритм сортировки">
@@ -653,7 +653,11 @@
 
   function build(){
     const parsed = S.parseChars($('inp').value, MAX, true);
-    const chars = parsed.chars;
+    /* заглавные буквы; повторы получают штрихи по порядку появления: A, A′, A″ (сравниваются как одинаковые ключи) */
+    const caps = parsed.chars.map(c => { const u = c.toUpperCase(); return [...u].length === 1 ? u : c; });
+    $('inp').value = caps.join('');
+    const seenCh = {};
+    const chars = caps.map(c => { const k = seenCh[c] = (seenCh[c] || 0) + 1; return c + '′'.repeat(k - 1); });
     if(chars.length < 1){
       player.setSteps([{title:'Мало данных', text:'Введите хотя бы один символ.', arr:[], C:0, M:0, dC:0, dM:0}]);
       return;
